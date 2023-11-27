@@ -7,9 +7,60 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+
+find_package(realsense2 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
+
+find_package(realsense_camera_yolo_interfaces REQUIRED)
+
+add_library(realsense_camera SHARED src/realsense_camera.cpp)
+
+add_executable(realsense_camera_node src/realsense_camera.cpp)
+
+ament_target_dependencies(realsense_camera
+  rclcpp
+  rclcpp_action
+  sensor_msgs
+  std_msgs
+  realsense2
+  OpenCV
+  cv_bridge
+  realsense_camera_yolo_interfaces
+)
+
+# No need to manually include directories for cv_bridge
+ament_target_dependencies(realsense_camera_node
+  rclcpp
+  rclcpp_action
+  sensor_msgs
+  std_msgs
+  realsense2
+  OpenCV
+  cv_bridge
+  realsense_camera_yolo_interfaces
+)
+
+# link libraries for realsense_camera.cpp
+target_link_libraries(
+  realsense_camera_node
+  ${rclcpp_LIBRARIES}
+  ${rclcpp_action_LIBRARIES}
+  ${sensor_msgs_LIBRARIES}
+  ${std_msgs_LIBRARIES}
+  ${realsense_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${cv_bridge_LIBRARIES}
+)
+
+install(TARGETS realsense_camera realsense_camera_node
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

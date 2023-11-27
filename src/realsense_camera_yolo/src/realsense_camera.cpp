@@ -37,14 +37,16 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node")
     // Initialize YOLO client
     YOLO_client = this->create_client<RealsenseYOLO>("realsense_yolo");
 
-    if (this->YOLO_client->wait_for_service(std::chrono::seconds(30)))
+    // Wait for YOLO service server
+    bool is_YOLO_server_up = false;
+    if (this->YOLO_client->wait_for_service(std::chrono::seconds(15)))
     {
         RCLCPP_INFO(this->get_logger(), "YOLO service server is up.");
+        is_YOLO_server_up = true;
     }
     else
     {
         RCLCPP_ERROR(this->get_logger(), "YOLO service server is not available after waiting.");
-        rclcpp::shutdown();
     }
 
     // Initialize publishers
@@ -93,7 +95,9 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node")
         RCLCPP_DEBUG(this->get_logger(), "New frames have been captured.");
 
         // Send request for YOLO
-        send_request_to_YOLO(frames);
+        if (is_YOLO_server_up){
+            send_request_to_YOLO(frames);
+        }
 
         // Publish images if needed
         if (publish_depth || publish_color)
@@ -141,9 +145,6 @@ void RealSenseCamera::send_request_to_YOLO(rs2::frameset frames)
 
     if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
     {
-        // Print something for debugging
-        RCLCPP_INFO_ONCE(this->get_logger(), "YOLO response has been received.");
-
         // Get response
         auto response = result.get();
 
@@ -153,6 +154,9 @@ void RealSenseCamera::send_request_to_YOLO(rs2::frameset frames)
         container_bounding_box_pixel[2] = response->x2;
         container_bounding_box_pixel[3] = response->y2;
 
+        // Print bounding box pixel for debugging
+        RCLCPP_INFO(this->get_logger(), "Bounding box pixel: \t %d \t %d \t %d \t %d", container_bounding_box_pixel[0], container_bounding_box_pixel[1], container_bounding_box_pixel[2], container_bounding_box_pixel[3]);
+
         // Project bounding box pixel to point
         project_container_pixel_to_point(depth_frame);
 
@@ -161,7 +165,7 @@ void RealSenseCamera::send_request_to_YOLO(rs2::frameset frames)
     }
     else
     {
-        RCLCPP_ERROR(this->get_logger(), "Failed to call YOLO service.");
+        RCLCPP_WARN(this->get_logger(), "Failed to call YOLO service.");
     }
 
     // Print something for debugging
@@ -177,20 +181,10 @@ void RealSenseCamera::project_container_pixel_to_point(rs2::depth_frame depth_fr
     rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
     rs2_intrinsics depth_intrinsics = depth_profile.get_intrinsics();
 
-    float depth_point[3];
-    rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, center_pixel, depth_value);
-
-    // Print depth point for debugging
-    RCLCPP_INFO(this->get_logger(), "Depth point: \t %.2f \t %.2f \t %.2f", depth_point[0], depth_point[1], depth_point[2]);
-
-    // Project depth point to trolley reference frame
-    // Isi bagian ini harusnya diubah sesuai dengan trolley
+    rs2_deproject_pixel_to_point(container_center_point, &depth_intrinsics, center_pixel, depth_value);
 
     // Print container center point for debugging
     RCLCPP_INFO(this->get_logger(), "Container center point: \t %.2f \t %.2f \t %.2f", container_center_point[0], container_center_point[1], container_center_point[2]);
-
-    // Print something for debugging
-    RCLCPP_INFO_ONCE(this->get_logger(), "Container center point has been calculated.");
 }
 
 void RealSenseCamera::publish_cable_length_and_sway_angle()
@@ -199,8 +193,8 @@ void RealSenseCamera::publish_cable_length_and_sway_angle()
     float y = container_center_point[1];
     float z = container_center_point[2];
 
-    float cable_length = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-    float sway_angle = atan2(x, z); // unit: radian
+    float cable_length = projector.projectPointAndGetDistance(x, y, z);
+    float sway_angle = projector.projectPointAndGetAngle(x, y, z);
     // Convert to degree
     sway_angle = sway_angle * 180 / M_PI;
 

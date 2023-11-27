@@ -1,7 +1,7 @@
 #ifndef POINT_PROJECTIONS_HPP
 #define POINT_PROJECTIONS_HPP
 
-// #include <cmath>
+#include <cmath>
 
 class pointProjections
 {

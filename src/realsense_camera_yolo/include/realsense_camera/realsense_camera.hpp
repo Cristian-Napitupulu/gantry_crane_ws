@@ -85,18 +85,20 @@ private:
 
     // Parameters for the point projection
     // Plane parameters from equation: Ax + By + Cz + D = 0
-    double A = 0.0;
-    double B = 0.0;
-    double C = 1.0;
-    double D = 0.0;
     // 3D Line parameters from equation: <x, y, z> = <x_1, y_1, z_1> + t<a, b, c>
-    double a = 0.0;
-    double b = 0.0;
-    double c = 1.0;
-    // New origin of the coordinate system (troley frame)
-    double x0 = 0.0;
-    double y0 = 0.0;
-    double z0 = 0.0;
+    // New origin of the coordinate system (x0, y0, z0)
+    double A = 0.0;
+    double B = 0.101;
+    double C = -0.01100000000000001;
+    double D = 0.009854000000000005;
+
+    double a = 0.06612969055395865;
+    double b = 0.10803365288517996;
+    double c = 0.9919453583093789;
+
+    double x0 = -0.006670616393108123;
+    double y0 = -0.09637278915705783;
+    double z0 = 0.01094075410337858;
     pointProjections projector = pointProjections(A, B, C, D, a, b, c, x0, y0, z0);
 };
 

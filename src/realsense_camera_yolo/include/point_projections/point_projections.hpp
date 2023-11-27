@@ -12,8 +12,12 @@ class pointProjections
 
     double normalPlaneUnitVectorX, normalPlaneUnitVectorY, normalPlaneUnitVectorZ;
 
+    
+    
+
     public:
     pointProjections(double A, double B, double C, double D, double a, double b, double c, double x0, double y0, double z0);
+    void projectPoint(double &x, double &y, double &z);
     double projectPointAndGetDistance(double x, double y, double z);
     double projectPointAndGetAngle(double x, double y, double z);
 
@@ -38,7 +42,7 @@ pointProjections::pointProjections(double A, double B, double C, double D, doubl
     normalPlaneUnitVectorZ = C_ / sqrt(A_*A_ + B_*B_ + C_*C_);
 }
 
-double pointProjections::projectPointAndGetDistance(double x, double y, double z)
+void pointProjections::projectPoint(double &x, double &y, double &z)
 {
     double dummyPointX = 0;
     double dummyPointY = 0;
@@ -54,46 +58,36 @@ double pointProjections::projectPointAndGetDistance(double x, double y, double z
     double projectionVectorY = dummyVectorY - dotProduct*normalPlaneUnitVectorY;
     double projectionVectorZ = dummyVectorZ - dotProduct*normalPlaneUnitVectorZ;
 
-    x = x + projectionVectorX;
-    y = y + projectionVectorY;
-    z = z + projectionVectorZ;
-
-    double deltaX = x - x0_;
-    double deltaY = y - y0_;
-    double deltaZ = z - z0_;
-
-    double distance = sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
-
-    return distance;
+    x = dummyPointX + projectionVectorX;
+    y = dummyPointY + projectionVectorY;
+    z = dummyPointZ + projectionVectorZ;
 }
 
-double pointProjections::projectPointAndGetAngle(double x, double y, double z)
+double pointProjections::projectPointAndGetDistance(double x, double y, double z)
 {
-    double dummyPointX = 0;
-    double dummyPointY = 0;
-    double dummyPointZ = -(A_*dummyPointX + B_*dummyPointY + D_) / C_;
-
-    double dummyVectorX = dummyPointX - x;
-    double dummyVectorY = dummyPointY - y;
-    double dummyVectorZ = dummyPointZ - z;
-
-    double dotProduct = dummyVectorX*normalPlaneUnitVectorX + dummyVectorY*normalPlaneUnitVectorY + dummyVectorZ*normalPlaneUnitVectorZ;
-
-    double projectionVectorX = dummyVectorX - dotProduct*normalPlaneUnitVectorX;
-    double projectionVectorY = dummyVectorY - dotProduct*normalPlaneUnitVectorY;
-    double projectionVectorZ = dummyVectorZ - dotProduct*normalPlaneUnitVectorZ;
-
-    x = x + projectionVectorX;
-    y = y + projectionVectorY;
-    z = z + projectionVectorZ;
+    projectPoint(x, y, z);
 
     double vectorX = x - x0_;
     double vectorY = y - y0_;
     double vectorZ = z - z0_;
 
-    double angle = acos((vectorX*a_ + vectorY*b_ + vectorZ*c_) / (sqrt(vectorX*vectorX + vectorY*vectorY + vectorZ*vectorZ)*sqrt(a_*a_ + b_*b_ + c_*c_) ));
+    double distance = sqrt(vectorX*vectorX + vectorY*vectorY + vectorZ*vectorZ);
+    return distance;
+}
 
-    if (x < 0)
+double pointProjections::projectPointAndGetAngle(double x, double y, double z)
+{
+    projectPoint(x, y, z);
+
+    double vectorX = x - x0_;
+    double vectorY = y - y0_;
+    double vectorZ = z - z0_;
+
+    // double angle = atan2(vectorX, vectorZ);
+    double dotProduct = vectorX*a_ + vectorY*b_ + vectorZ*c_;
+    double angle = acos(dotProduct / (sqrt(vectorX*vectorX + vectorY*vectorY + vectorZ*vectorZ)*sqrt(a_*a_ + b_*b_ + c_*c_)));
+    
+    if (vectorX < 0)
     {
         angle = -angle;
     }

@@ -37,7 +37,7 @@ normal_line_direction_vector = normal_line_direction_vector / np.linalg.norm(
     normal_line_direction_vector
 )
 print(
-    "Normal line direction vector: <{}, {}, {}>".format(
+    "Normal line direction vector: ({}, {}, {})".format(
         normal_line_direction_vector[0],
         normal_line_direction_vector[1],
         normal_line_direction_vector[2],
@@ -45,7 +45,7 @@ print(
 )
 # Print normal line equation in the form of (x, y, z) = (x0, y0, z0) + t<a, b, c>
 print(
-    "Normal line equation: (x, y, z) = ({}, {}, {}) + t<{}, {}, {}>".format(
+    "Normal line equation: X = ({}, {}, {}) + t*({}, {}, {})".format(
         point_A[0],
         point_A[1],
         point_A[2],

@@ -6,7 +6,7 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node")
     this->declare_parameter("depth_image_topic", "depth_image");
     this->declare_parameter("color_image_topic", "color_image");
     this->declare_parameter("minimum_distance", 0.15); // meters
-    this->declare_parameter("maximum_distance", 1.0); // meters
+    this->declare_parameter("maximum_distance", 1.0);  // meters
     this->declare_parameter("publish_depth", false);
     this->declare_parameter("publish_color", false);
 
@@ -95,7 +95,8 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node")
         RCLCPP_DEBUG(this->get_logger(), "New frames have been captured.");
 
         // Send request for YOLO
-        if (is_YOLO_server_up){
+        if (is_YOLO_server_up)
+        {
             send_request_to_YOLO(frames);
         }
 
@@ -184,15 +185,16 @@ void RealSenseCamera::project_container_pixel_to_point(rs2::depth_frame depth_fr
     rs2_deproject_pixel_to_point(container_center_point, &depth_intrinsics, center_pixel, depth_value);
 
     // Print container center point for debugging
-    RCLCPP_INFO(this->get_logger(), "Container center point: \t %.2f \t %.2f \t %.2f", container_center_point[0], container_center_point[1], container_center_point[2]);
+    RCLCPP_INFO(this->get_logger(), "Container center point: ( %.7f , %.7f , %.7f )", container_center_point[0], container_center_point[1], container_center_point[2]);
 }
 
 void RealSenseCamera::publish_cable_length_and_sway_angle()
 {
-    float x = container_center_point[0];
-    float y = container_center_point[1];
-    float z = container_center_point[2];
+    double x = container_center_point[0];
+    double y = container_center_point[1];
+    double z = container_center_point[2];
 
+    projector.projectPoint(x, y, z);
     float cable_length = projector.projectPointAndGetDistance(x, y, z);
     float sway_angle = projector.projectPointAndGetAngle(x, y, z);
     // Convert to degree

@@ -11,7 +11,7 @@
 
 #include "realsense_camera_yolo_interfaces/srv/realsense_yolo.hpp"
 
-#include "transformations/transformations.hpp"
+#include "point_projections/point_projections.hpp"
 
 class RealSenseCamera : public rclcpp::Node
 {
@@ -75,7 +75,6 @@ private:
 
     void publish_image(rs2::frameset frames);
 
-    Transformations transformations;
     // Transformation parameter to transform the point cloud from the camera frame to the trolley frame
     double dx = 0.02;
     double dy = -0.10;
@@ -83,6 +82,22 @@ private:
     double theta_x = -6.8;
     double theta_y = -4.0;
     double theta_z = 0.0;
+
+    // Parameters for the point projection
+    // Plane parameters from equation: Ax + By + Cz + D = 0
+    double A = 0.0;
+    double B = 0.0;
+    double C = 1.0;
+    double D = 0.0;
+    // 3D Line parameters from equation: <x, y, z> = <x_1, y_1, z_1> + t<a, b, c>
+    double a = 0.0;
+    double b = 0.0;
+    double c = 1.0;
+    // New origin of the coordinate system (troley frame)
+    double x0 = 0.0;
+    double y0 = 0.0;
+    double z0 = 0.0;
+    pointProjections projector = pointProjections(A, B, C, D, a, b, c, x0, y0, z0);
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

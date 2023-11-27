@@ -60,8 +60,6 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node")
         color_image_publisher = create_publisher<sensor_msgs::msg::Image>(color_image_topic, 10);
     }
 
-    transformations.setTransformations(dx, dy, dz, theta_x, theta_y, theta_z);
-
     // Print something for debugging
     RCLCPP_DEBUG(this->get_logger(), "RealSense Camera Node has been initialized.");
 
@@ -185,14 +183,8 @@ void RealSenseCamera::project_container_pixel_to_point(rs2::depth_frame depth_fr
     // Print depth point for debugging
     RCLCPP_INFO(this->get_logger(), "Depth point: \t %.2f \t %.2f \t %.2f", depth_point[0], depth_point[1], depth_point[2]);
 
-    // Project depth point 
-    // Transform depth point from the camera frame to the trolley frame
-    Vector3d point(depth_point[0], depth_point[1], depth_point[2]);
-    Vector3d transformedPoint = transformations.transformPoint(point);
-
-    container_center_point[0] = static_cast<float>(transformedPoint[0]);
-    container_center_point[1] = static_cast<float>(transformedPoint[1]);
-    container_center_point[2] = static_cast<float>(transformedPoint[2]);
+    // Project depth point to trolley reference frame
+    // Isi bagian ini harusnya diubah sesuai dengan trolley
 
     // Print container center point for debugging
     RCLCPP_INFO(this->get_logger(), "Container center point: \t %.2f \t %.2f \t %.2f", container_center_point[0], container_center_point[1], container_center_point[2]);

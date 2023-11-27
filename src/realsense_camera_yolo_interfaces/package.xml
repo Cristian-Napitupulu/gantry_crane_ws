@@ -3,9 +3,9 @@
 <package format="3">
   <name>realsense_camera_yolo_interfaces</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="cristian@todo.todo">cristian</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Package for realsense camera and realsense yolo service-client interface</description>
+  <maintainer email="cristiannapitupulu.exe@gmail.com">cristian napitupulu</maintainer>
+  <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   

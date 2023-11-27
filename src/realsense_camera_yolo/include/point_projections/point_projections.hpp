@@ -12,16 +12,11 @@ class pointProjections
 
     double normalPlaneUnitVectorX, normalPlaneUnitVectorY, normalPlaneUnitVectorZ;
 
-    
-    
-
     public:
     pointProjections(double A, double B, double C, double D, double a, double b, double c, double x0, double y0, double z0);
     void projectPoint(double &x, double &y, double &z);
-    double projectPointAndGetDistance(double x, double y, double z);
-    double projectPointAndGetAngle(double x, double y, double z);
-
-
+    double getDistance(double x, double y, double z);
+    double getAngle(double x, double y, double z);
 };
 
 pointProjections::pointProjections(double A, double B, double C, double D, double a, double b, double c, double x0, double y0, double z0)
@@ -63,7 +58,7 @@ void pointProjections::projectPoint(double &x, double &y, double &z)
     z = dummyPointZ + projectionVectorZ;
 }
 
-double pointProjections::projectPointAndGetDistance(double x, double y, double z)
+double pointProjections::getDistance(double x, double y, double z)
 {
     projectPoint(x, y, z);
 
@@ -75,7 +70,7 @@ double pointProjections::projectPointAndGetDistance(double x, double y, double z
     return distance;
 }
 
-double pointProjections::projectPointAndGetAngle(double x, double y, double z)
+double pointProjections::getAngle(double x, double y, double z)
 {
     projectPoint(x, y, z);
 

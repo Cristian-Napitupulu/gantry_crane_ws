@@ -50,12 +50,20 @@ class Realsense_YOLO(Node):
             request.depth_image, desired_encoding="passthrough"
         )
 
+        # Print depth image shape
+        self.get_logger().info("Depth image shape: {}".format(depth_image.shape))
+
         # Print debug message
         self.get_logger().debug("Image received")
 
         # Convert depth image to colorized depth image
         colorized_depth_image = cv2.applyColorMap(
             cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET
+        )
+        
+        # Print colorized depth image shape
+        self.get_logger().info(
+            "Colorized depth image shape: {}".format(colorized_depth_image.shape)
         )
 
         # Extract bounding box coordinates from YOLO model results

@@ -10,48 +10,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Points from measurement with realsense camera
 point_A = np.array([0.026, -0.043, 0.501])
 point_B = np.array([0.056, -0.043, 0.499])
 point_C = np.array([0.026, 0.058, 0.490])
-print("Point A: ({}, {}, {})".format(point_A[0], point_A[1], point_A[2]))
-print("Point B: ({}, {}, {})".format(point_B[0], point_B[1], point_B[2]))
-print("Point C: ({}, {}, {})".format(point_C[0], point_C[1], point_C[2]))
+# Print points
+for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
+    print(f"Point {label}:", tuple(point))
 print("")
+
 
 # Create a vector from A to B
 vector_AB = point_B - point_A
-print("Vector AB: <{}, {}, {}>".format(vector_AB[0], vector_AB[1], vector_AB[2]))
+print("Vector AB:", tuple(vector_AB))
 
 # Create a vector from A to C
 vector_AC = point_C - point_A
-print("Vector AC: <{}, {}, {}>".format(vector_AC[0], vector_AC[1], vector_AC[2]))
+print("Vector AC:", tuple(vector_AC))
 print("")
 
 # Calculate the cross product of AB and AC
 # This will be the direction vector of the normal line
 # The normal line is the line that is perpendicular to the plane of the container
 # The normal line pierces through the center of the container (point  A)
-# Let's call this line "line N"
 normal_line_direction_vector = np.cross(vector_AB, vector_AC)
 normal_line_direction_vector = normal_line_direction_vector / np.linalg.norm(
     normal_line_direction_vector
 )
-print(
-    "Normal line direction vector: ({}, {}, {})".format(
-        normal_line_direction_vector[0],
-        normal_line_direction_vector[1],
-        normal_line_direction_vector[2],
-    )
-)
-# Print normal line equation in the form of (x, y, z) = (x0, y0, z0) + t<a, b, c>
+
+print("Normal line direction vector:", tuple(normal_line_direction_vector))
 print(
     "Normal line equation: X = ({}, {}, {}) + t*({}, {}, {})".format(
-        point_A[0],
-        point_A[1],
-        point_A[2],
-        normal_line_direction_vector[0],
-        normal_line_direction_vector[1],
-        normal_line_direction_vector[2],
+        *point_A, *normal_line_direction_vector
     )
 )
 print("")
@@ -68,10 +58,8 @@ normal_plane_D = -(
     + normal_plane_B * point_A[1]
     + normal_plane_C * point_A[2]
 )
-print("Plane A: {}".format(normal_plane_A))
-print("Plane B: {}".format(normal_plane_B))
-print("Plane C: {}".format(normal_plane_C))
-print("Plane D: {}".format(normal_plane_D))
+normal_plane_vector = np.array([normal_plane_A, normal_plane_B, normal_plane_C])
+
 print(
     "Plane equation: {}x + {}y + {}z + {} = 0".format(
         normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D
@@ -80,38 +68,30 @@ print(
 print("")
 
 # Calculate line equation that parallel to vector AC and pierces through origin
-# This line equation is in the form of (x, y, z) = t<a, b, c>
+# This line equation is in the form of (x, y, z) = t*(a, b, c)
 # Where a, b, c are the components of vector AC
 line_direction_vector = vector_AC
 
 # Calculate which point on the line that is on the normal plane
 # Substitute the line equation into the normal plane equation
 # And solve for t
-t = -normal_plane_D / (
-    line_direction_vector[0] * normal_plane_A
-    + line_direction_vector[1] * normal_plane_B
-    + line_direction_vector[2] * normal_plane_C
-)
-print("t: {}".format(t))
+
+t = -normal_plane_D / (np.dot(normal_plane_vector, line_direction_vector))
+# print("t: {}".format(t))
 
 # Calculate the point on the line that is on the normal plane
 point_on_line_on_plane = t * line_direction_vector
-print(
-    "Point on line on normal plane: ({}, {}, {})".format(
-        point_on_line_on_plane[0],
-        point_on_line_on_plane[1],
-        point_on_line_on_plane[2],
-    )
-)
+print("Point on line on normal plane:", tuple(point_on_line_on_plane))
 print("")
 
 # Find the closest point on the normal line to the point on the line on the plane
 t = np.dot(normal_line_direction_vector, point_on_line_on_plane - point_A) / np.dot(
     normal_line_direction_vector, normal_line_direction_vector
 )
-print("t: {}".format(t))
+# print("t: {}".format(t))
+
 point_O = point_A + t * normal_line_direction_vector
-print("Point O: ({}, {}, {})".format(point_O[0], point_O[1], point_O[2]))
+print("Point O:", tuple(point_O))
 
 # Calculate the distance between point O and point A
 distance_OA = np.linalg.norm(point_O - point_A)
@@ -141,7 +121,7 @@ print("")
 # The normal plane pierces through the center of the container (point  A)
 # The normal line is on the normal plane
 # Limit of the plot
-limit = point_A[2]
+limit = distance_OA
 
 x_plane = np.linspace(-limit, limit, 10)
 y_plane = np.linspace(-limit, limit, 10)
@@ -157,20 +137,21 @@ ax = fig.add_subplot(111, projection="3d")
 ax.plot_surface(X_plane, Y_plane, Z_plane, alpha=0.5)
 
 normal_line_points = np.array(
-    [point_A + t * normal_line_direction_vector for t in np.linspace(-limit, limit, 10)]
+    [point_A + t * normal_line_direction_vector for t in np.linspace(-limit, 0, 10)]
 )
 
 ax.plot(
     normal_line_points[:, 0],
     normal_line_points[:, 1],
     normal_line_points[:, 2],
-    color="b",
+    color="g",
     linewidth=2.0,
+    alpha=0.5,
 )
 
-ax.scatter(point_A[0], point_A[1], point_A[2], color="k", marker="o")
-ax.scatter(point_B[0], point_B[1], point_B[2], color="k", marker="o")
-ax.scatter(point_C[0], point_C[1], point_C[2], color="k", marker="o")
+ax.scatter(point_A[0], point_A[1], point_A[2], color="k", marker=".")
+ax.scatter(point_B[0], point_B[1], point_B[2], color="k", marker=".")
+ax.scatter(point_C[0], point_C[1], point_C[2], color="k", marker=".")
 ax.scatter(point_O[0], point_O[1], point_O[2], color="r", marker="o")
 ax.set_xlabel("X")
 ax.set_ylabel("Y")

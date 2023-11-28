@@ -183,9 +183,6 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
         containerBoundingBoxPixel[2] = response->x2;
         containerBoundingBoxPixel[3] = response->y2;
 
-        // Print bounding box pixel for debugging
-        RCLCPP_INFO(this->get_logger(), "Bounding box pixel: \t %d \t %d \t %d \t %d", containerBoundingBoxPixel[0], containerBoundingBoxPixel[1], containerBoundingBoxPixel[2], containerBoundingBoxPixel[3]);
-
         // Project bounding box pixel to point
         projectContainerPixelToPoint(depth_frame);
 

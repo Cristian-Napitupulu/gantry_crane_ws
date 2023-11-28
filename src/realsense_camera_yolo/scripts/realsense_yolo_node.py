@@ -8,7 +8,7 @@ from rclpy.node import Node
 from ultralytics import YOLO
 from realsense_camera_yolo_interfaces.srv import RealsenseYOLO
 
-class RealsenseYOLO(Node):
+class RealSenseYOLOServer(Node):
     def __init__(self):
         super().__init__("realsense_yolo_node")
 
@@ -51,7 +51,7 @@ class RealsenseYOLO(Node):
         )
 
         # Draw bounding box on colorized depth image
-        bounding_box = np.round(results[0].boxes.xyxy[0]).astype(int)
+        bounding_box = np.round(results[0].boxes.xyxy[0].tolist()).astype(int)
         imgres = colorized_depth_image
         color = (255, 255, 255)
         thickness = 2
@@ -76,8 +76,8 @@ class RealsenseYOLO(Node):
         result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)
 
         # Print result for debugging
-        self.get_logger().debug(
-            f"Result: x1: {result.x1}, y1: {result.y1}, x2: {result.x2}, y2: {result.y2}"
+        self.get_logger().info(
+            f"Bounding box: x1: {result.x1}, y1: {result.y1}, x2: {result.x2}, y2: {result.y2}"
         )
 
         return result
@@ -85,7 +85,7 @@ class RealsenseYOLO(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    realsense_yolo = RealsenseYOLO()
+    realsense_yolo = RealSenseYOLOServer()
     rclpy.spin(realsense_yolo)
     realsense_yolo.destroy_node()
     rclpy.shutdown()

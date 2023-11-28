@@ -12,6 +12,8 @@
 #include "realsense_camera_yolo_interfaces/srv/realsense_yolo.hpp"
 
 #include "point_projections/point_projections.hpp"
+#include "moving_average/moving_average.hpp"
+
 #include "realsense_parameter.hpp"
 
 class RealSenseCamera : public rclcpp::Node
@@ -65,6 +67,9 @@ private:
     double x0, y0, z0;  // Trolley reference point
 
     pointProjections projector;
+    MovingAverage containerXPosition;
+    MovingAverage containerYPosition;
+    MovingAverage containerZPosition;
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

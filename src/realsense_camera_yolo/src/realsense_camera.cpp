@@ -20,7 +20,10 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node"),
                                      x0(TROLLEY_ORIGIN_X),
                                      y0(TROLLEY_ORIGIN_Y),
                                      z0(TROLLEY_ORIGIN_Z),
-                                     projector(A, B, C, D, a, b, c, x0, y0, z0)
+                                     projector(A, B, C, D, a, b, c, x0, y0, z0),
+                                     containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                     containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                     containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE)
 {
     initializeParameters();
     printParameters();
@@ -122,17 +125,18 @@ void RealSenseCamera::initializePublishers()
 {
     cableLengthPublisher = create_publisher<std_msgs::msg::Float64>("cable_length", 10);
     swayAnglePublisher = create_publisher<std_msgs::msg::Float64>("sway_angle", 10);
+    RCLCPP_INFO(get_logger(), "Cable length and sway angle publishers have been initialized.");
 
     if (publishDepth)
     {
         depthImagePublisher = create_publisher<sensor_msgs::msg::Image>(depthImageTopic, 10);
+        RCLCPP_INFO(get_logger(), "Depth image publisher has been initialized.");
     }
     if (publishColor)
     {
         colorImagePublisher = create_publisher<sensor_msgs::msg::Image>(colorImageTopic, 10);
+        RCLCPP_INFO(get_logger(), "Color image publisher has been initialized.");
     }
-
-    RCLCPP_DEBUG(get_logger(), "RealSense Camera Node has been initialized.");
 }
 
 void RealSenseCamera::initializeRealSenseCamera()
@@ -146,7 +150,7 @@ void RealSenseCamera::initializeRealSenseCamera()
     depthSensor.set_option(RS2_OPTION_ENABLE_MAX_USABLE_RANGE, 0);
     depthSensor.set_option(RS2_OPTION_MIN_DISTANCE, static_cast<float>(minimumDistance));
 
-    RCLCPP_DEBUG(get_logger(), "RealSense Camera has been configured.");
+    RCLCPP_INFO(get_logger(), "RealSense camera has been initialized.");
 }
 
 rs2::depth_frame RealSenseCamera::processDepthFrame(rs2::depth_frame depth_frame)
@@ -208,10 +212,19 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
     rs2_intrinsics depth_intrinsics = depth_profile.get_intrinsics();
 
-    rs2_deproject_pixel_to_point(containerCenterPoint, &depth_intrinsics, center_pixel, depth_value);
+    float depthPoint[3];
+    rs2_deproject_pixel_to_point(depthPoint, &depth_intrinsics, center_pixel, depth_value);
+
+    containerXPosition.addValue(depthPoint[0]);
+    containerYPosition.addValue(depthPoint[1]);
+    containerZPosition.addValue(depthPoint[2]);
+
+    containerCenterPoint[0] = containerXPosition.getMovingAverage();
+    containerCenterPoint[1] = containerYPosition.getMovingAverage();
+    containerCenterPoint[2] = containerZPosition.getMovingAverage();
 
     // Print container center point for debugging
-    RCLCPP_INFO(get_logger(), "Container center point: ( %.5f , %.5f , %.5f )",
+    RCLCPP_INFO(get_logger(), "Container center point (x, y, z): ( %.5f , %.5f , %.5f )",
                 containerCenterPoint[0], containerCenterPoint[1], containerCenterPoint[2]);
 }
 
@@ -242,7 +255,7 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     swayAnglePublisher->publish(sway_angle_message);
 
     // Print cable length and sway angle for debugging
-    RCLCPP_INFO(this->get_logger(), "Cable length: \t %.5f \t meters, Sway angle: \t %.5f \t degrees", cable_length, sway_angle);
+    RCLCPP_INFO(this->get_logger(), "Cable length: %.5f meters, Sway angle: %.5f degrees", cable_length, sway_angle);
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)

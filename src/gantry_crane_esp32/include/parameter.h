@@ -16,6 +16,9 @@
 
 // When choosing a pin, make sure it is not conflicting with other pins.
 // For more information, see https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+// Pin 0 and 1 are used for serial communication, so don't use them.
+// Pin 6 to 11 are used for SPI communication, so don't use them.
+// Pin 34 to 39 are input only, so don't use them.
 #define ENCODER_CHANNEL_A_PIN 27
 #define ENCODER_CHANNEL_B_PIN 26
 
@@ -23,9 +26,9 @@
 #define TROLLEY_MOTOR_REVERSE_PIN 5
 #define TROLLEY_MOTOR_PWM_PIN 2
 
-#define HOIST_MOTOR_FORWARD_PIN 32
-#define HOIST_MOTOR_REVERSE_PIN 33
-#define HOIST_MOTOR_PWM_PIN 34
+#define HOIST_MOTOR_FORWARD_PIN 18
+#define HOIST_MOTOR_REVERSE_PIN 19
+#define HOIST_MOTOR_PWM_PIN 21
 
 #define PCA9685_ADDRESS 0x40
 

@@ -14,8 +14,6 @@
 #include "point_projections/point_projections.hpp"
 #include "moving_average/moving_average.hpp"
 
-#include "realsense_parameter.hpp"
-
 class RealSenseCamera : public rclcpp::Node
 {
 public:

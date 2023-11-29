@@ -1,4 +1,5 @@
 #include "realsense_camera/realsense_camera.hpp"
+#include "realsense_parameter.hpp"
 
 RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node"),
                                      YOLO_client(nullptr),

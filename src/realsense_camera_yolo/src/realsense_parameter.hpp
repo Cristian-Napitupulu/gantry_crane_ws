@@ -22,8 +22,8 @@
 
 #define DEPTH_IMAGE_TOPIC "depth_image"
 #define COLOR_IMAGE_TOPIC "color_image"
-#define PUBLISH_DEPTH true
-#define PUBLISH_COLOR true
+#define PUBLISH_DEPTH false
+#define PUBLISH_COLOR false
 
 // Callibration parameters
 // Parameters for point projection

@@ -64,13 +64,13 @@ class RealSenseYOLOServer(Node):
         )
 
         # Check if log level is set to debug before showing the image
-        if (
-            self.get_logger().get_effective_level()
-            == rclpy.logging.LoggingSeverity.DEBUG
-        ):
+        # if (
+        #     self.get_logger().get_effective_level()
+        #     == rclpy.logging.LoggingSeverity.DEBUG
+        # ):
             # Show changed perspective colorized depth image
-            cv2.imshow("Image", imgres)
-            cv2.waitKey(1)
+        cv2.imshow("Image", imgres)
+        cv2.waitKey(1)
 
         # Return result
         result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)

@@ -1,7 +1,7 @@
 #include "realsense_camera/realsense_camera.hpp"
 #include "realsense_parameter.hpp"
 
-RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node"),
+RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      YOLO_client(nullptr),
                                      depthImagePublisher(nullptr),
                                      colorImagePublisher(nullptr),
@@ -11,17 +11,9 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node"),
                                      colorHeight(COLOR_FRAME_HEIGHT),
                                      depthWidth(DEPTH_FRAME_WIDTH),
                                      depthHeight(DEPTH_FRAME_HEIGHT),
-                                     A(NORMAL_PLANE_A),
-                                     B(NORMAL_PLANE_B),
-                                     C(NORMAL_PLANE_C),
-                                     D(NORMAL_PLANE_D),
-                                     a(NORMAL_LINE_A),
-                                     b(NORMAL_LINE_B),
-                                     c(NORMAL_LINE_C),
-                                     x0(TROLLEY_ORIGIN_X),
-                                     y0(TROLLEY_ORIGIN_Y),
-                                     z0(TROLLEY_ORIGIN_Z),
-                                     projector(A, B, C, D, a, b, c, x0, y0, z0),
+                                     projector(NORMAL_PLANE_A, NORMAL_PLANE_B, NORMAL_PLANE_C, NORMAL_PLANE_D,
+                                               NORMAL_LINE_A, NORMAL_LINE_B, NORMAL_LINE_C,
+                                               TROLLEY_ORIGIN_X, TROLLEY_ORIGIN_Y, TROLLEY_ORIGIN_Z),
                                      containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
                                      containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
                                      containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE)
@@ -80,8 +72,8 @@ RealSenseCamera::RealSenseCamera() : Node("realsense_camera_node"),
 void RealSenseCamera::initializeParameters()
 {
     // Declare parameters and the default value
-    declare_parameter("depth_image_topic", DEPTH_IMAGE_TOPIC);
-    declare_parameter("color_image_topic", COLOR_IMAGE_TOPIC);
+    declare_parameter("depth_image_topic", DEPTH_IMAGE_TOPIC_NAME);
+    declare_parameter("color_image_topic", COLOR_IMAGE_TOPIC_NAME);
     declare_parameter("minimum_distance", MINIMUM_DISTANCE); // meters
     declare_parameter("maximum_distance", MAXIMUM_DISTANCE); // meters
     declare_parameter("publish_depth", PUBLISH_DEPTH);
@@ -124,8 +116,8 @@ bool RealSenseCamera::initializeYOLOClient()
 
 void RealSenseCamera::initializePublishers()
 {
-    cableLengthPublisher = create_publisher<std_msgs::msg::Float64>("cable_length", 10);
-    swayAnglePublisher = create_publisher<std_msgs::msg::Float64>("sway_angle", 10);
+    cableLengthPublisher = create_publisher<std_msgs::msg::Float64>(CABLE_LENGTH_TOPIC_NAME, 10);
+    swayAnglePublisher = create_publisher<std_msgs::msg::Float64>(SWAY_ANGLE_TOPIC_NAME, 10);
     RCLCPP_INFO(get_logger(), "Cable length and sway angle publishers have been initialized.");
 
     if (publishDepth)

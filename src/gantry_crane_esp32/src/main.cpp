@@ -1,24 +1,51 @@
 #include <Arduino.h>
 
 #include "parameter.h"
-#include "component.h"
+#include "variable.h"
 #include "microROS.h"
+
+void limitSwitchCallback()
+{
+  if (limitSwitchEncoderSide.getState() == LOW)
+  {
+    limitSwitchEncoderSideState = true;
+  }
+
+  if (limitSwitchTrolleyMotorSide.getState() == LOW)
+  {
+    limitSwitchTrolleyMotorSideState = true;
+  }
+}
+
+bool reverse = false; 
 
 void setup()
 {
+  ledBuiltIn.begin();
+  ledBuiltIn.turnOn();
+
   trolleyMotor.begin();
   hoistMotor.begin();
 
   encoderTrolley.begin();
   attachInterrupt(encoderTrolley.getChannelA(), encoderTrolleyCallback, CHANGE);
 
+  limitSwitchEncoderSide.begin();
+  attachInterrupt(limitSwitchEncoderSide.getPin(), limitSwitchCallback, CHANGE);
+
+  limitSwitchTrolleyMotorSide.begin();
+  attachInterrupt(limitSwitchTrolleyMotorSide.getPin(), limitSwitchCallback, CHANGE);
+
   microROSInit();
+
+  ledBuiltIn.turnOff();
 }
 
 void loop()
 {
-   
-  RCSOFTCHECK(rclc_executor_spin_some(&encoderPubExecutor, RCL_MS_TO_NS(ENCODER_PUBLISH_TIMEOUT_NS)));
-  RCSOFTCHECK(rclc_executor_spin_some(&trolleyPWMExecutor, RCL_MS_TO_NS(TROLLEY_PWM_SUBSCRIBER_TIMEOUT_NS)));
-  RCSOFTCHECK(rclc_executor_spin_some(&hoistPWMExecutor, RCL_MS_TO_NS(HOIST_PWM_SUBSCRIBER_TIMEOUT_NS)));
+  ledBuiltIn.pulse();
+
+  RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_NS)));
+  RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_NS)));
+  RCSOFTCHECK(rclc_executor_spin_some(&motorPWMExecutor, RCL_MS_TO_NS(MOTOR_PWM_SUBSCRIBER_TIMEOUT_NS)));
 }

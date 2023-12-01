@@ -60,10 +60,6 @@ private:
     const int colorWidth, colorHeight;
     const int depthWidth, depthHeight; 
 
-    double A, B, C, D;  // Plane equation: Ax + By + Cz + D = 0
-    double a, b, c;     // Line equation: (x,y,z) = (x1,y1,z1) + t*(a,b,c)
-    double x0, y0, z0;  // Trolley reference point
-
     pointProjections projector;
     MovingAverage containerXPosition;
     MovingAverage containerYPosition;

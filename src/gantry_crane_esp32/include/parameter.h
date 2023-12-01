@@ -4,31 +4,52 @@
 #define SERIAL_BAUDRATE 115200
 
 #define NODE_NAME "microcontroller_gantry"
-#define ENCODER_TOPIC_NAME "encoder_value"
-#define TROLLEY_PWM_TOPIC_NAME "trolley_pwm"
-#define HOIST_PWM_TOPIC_NAME "hoist_pwm"
+#define POSITION_TOPIC_NAME "position"
+#define LIMIT_SWITCH_TOPIC_NAME "limit_switch"
+#define MOTOR_PWM_TOPIC_NAME "motor_pwm"
 
-#define ENCODER_PUBLISH_PERIOD_MS 10
-#define ENCODER_PUBLISH_TIMEOUT_NS 20
+#define POSITION_PUBLISH_PERIOD_MS 3
+#define POSITION_PUBLISH_TIMEOUT_NS 20
 
-#define TROLLEY_PWM_SUBSCRIBER_TIMEOUT_NS 20
-#define HOIST_PWM_SUBSCRIBER_TIMEOUT_NS 20
+#define MOTOR_PWM_SUBSCRIBER_TIMEOUT_NS 20
+
+#define LIMIT_SWITCH_PUBLISH_PERIOD_MS 5
+#define LIMIT_SWITCH_PUBLISH_TIMEOUT_NS 20
+
+#define TROLLEY_MOTOR_PWM_MAX 100
+#define HOIST_MOTOR_PWM_MAX 150
+
+#define ENCODER_MAX_VALUE 26000
+#define ENCODER_MIN_VALUE 0
+
+#define POSITION_MAX_VALUE 1.5
+#define POSITION_MIN_VALUE 0
 
 // When choosing a pin, make sure it is not conflicting with other pins.
 // For more information, see https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 // Pin 0 and 1 are used for serial communication, so don't use them.
 // Pin 6 to 11 are used for SPI communication, so don't use them.
 // Pin 34 to 39 are input only, so don't use them.
-#define ENCODER_CHANNEL_A_PIN 27
-#define ENCODER_CHANNEL_B_PIN 26
+#define ENCODER_CHANNEL_A_PIN 33
+#define ENCODER_CHANNEL_B_PIN 32
 
-#define TROLLEY_MOTOR_FORWARD_PIN 4
-#define TROLLEY_MOTOR_REVERSE_PIN 5
-#define TROLLEY_MOTOR_PWM_PIN 2
+#define TROLLEY_MOTOR_FORWARD_PIN 21
+#define TROLLEY_MOTOR_REVERSE_PIN 22
+#define TROLLEY_MOTOR_PWM_PIN 23
 
 #define HOIST_MOTOR_FORWARD_PIN 18
-#define HOIST_MOTOR_REVERSE_PIN 19
-#define HOIST_MOTOR_PWM_PIN 21
+#define HOIST_MOTOR_REVERSE_PIN 5
+#define HOIST_MOTOR_PWM_PIN 19
+
+#define LIMIT_SWITCH_ENCODER_SIDE_PIN 12
+#define LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_PIN 14
+
+#define LIMIT_SWITCH_NONE_TRIGGERED 0x00
+#define LIMIT_SWITCH_ENCODER_SIDE_TRIGGERED 0x04
+#define LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_TRIGGERED 0x08
+#define LIMIT_SWITCH_BOTH_TRIGGERED 0x0C
+
+#define COMMAND_BRAKE_MOTOR 0xFFFF
 
 #define PCA9685_ADDRESS 0x40
 

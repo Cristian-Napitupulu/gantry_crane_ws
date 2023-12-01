@@ -1,5 +1,5 @@
-#ifndef ENCODER_H
-#define ENCODER_H
+#ifndef ENCODER_HPP
+#define ENCODER_HPP
 
 #include <Arduino.h>
 
@@ -10,7 +10,7 @@ class Encoder {
         void update();
         int32_t getPulse();
         void reset();
-        int8_t getChannelA();
+        uint8_t getChannelA();
         
     private:
         uint8_t channelA;
@@ -45,4 +45,4 @@ class Encoder {
 //     attachInterrupt(digitalPinToInterrupt(ENCODER_CHANNEL_A), encoderUpdate, CHANGE);
 // }
 
-#endif // ENCODER_H
+#endif // ENCODER_HPP

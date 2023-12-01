@@ -1,5 +1,5 @@
-#ifndef MOTOR_H
-#define MOTOR_H
+#ifndef MOTOR_HPP
+#define MOTOR_HPP
 
 #include <Arduino.h>
 
@@ -8,13 +8,14 @@ class Motor {
     u_int8_t forwardPin;
     u_int8_t reversePin;
     u_int8_t pwmPin;
-    int8_t speedCurrentSign = 0;
+    int8_t pwmCurrentSign = 0;
+    int16_t maxPWM = 255;
 
     public:
-    Motor(u_int8_t forwardPin, u_int8_t reversePin, u_int8_t pwmPin);
+    Motor(u_int8_t forwardPin, u_int8_t reversePin, u_int8_t pwmPin, int16_t maxPWM);
     void begin();
-    void speed(int16_t speed);
+    void setPWM(int16_t PWM);
     void brake();
 };
 
-#endif // MOTOR_H
+#endif // MOTOR_HPP

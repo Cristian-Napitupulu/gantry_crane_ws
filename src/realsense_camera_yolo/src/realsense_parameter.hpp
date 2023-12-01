@@ -1,6 +1,15 @@
 #ifndef REALSENSE_PARAMETER_HPP
 #define REALSENSE_PARAMETER_HPP
 
+#define NODE_NAME "realsense_camera"
+#define DEPTH_IMAGE_TOPIC_NAME "depth_image"
+#define COLOR_IMAGE_TOPIC_NAME "color_image"
+#define PUBLISH_DEPTH false
+#define PUBLISH_COLOR false
+
+#define CABLE_LENGTH_TOPIC_NAME "cable_length"
+#define SWAY_ANGLE_TOPIC_NAME "sway_angle"
+
 #define MINIMUM_DISTANCE 0.2
 #define MAXIMUM_DISTANCE 1.0
 
@@ -19,11 +28,6 @@
  * 960x540*/
 #define COLOR_FRAME_WIDTH 960
 #define COLOR_FRAME_HEIGHT 540
-
-#define DEPTH_IMAGE_TOPIC "depth_image"
-#define COLOR_IMAGE_TOPIC "color_image"
-#define PUBLISH_DEPTH false
-#define PUBLISH_COLOR false
 
 // Callibration parameters
 // Parameters for point projection

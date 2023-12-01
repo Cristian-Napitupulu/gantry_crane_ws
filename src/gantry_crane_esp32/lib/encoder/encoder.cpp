@@ -26,6 +26,6 @@ void Encoder::reset(){
     this->pulses = 0;
 }
 
-int8_t Encoder::getChannelA(){
+u_int8_t Encoder::getChannelA(){
     return this->channelA;
 }

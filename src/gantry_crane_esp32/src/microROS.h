@@ -70,7 +70,7 @@ void error_loop()
 {
   while (1)
   {
-    ledBuiltIn.blink(100);
+    ledBuiltIn.blink(1000);
   }
 }
 
@@ -119,16 +119,16 @@ void motorPWMCallback(const void *msgin)
   const std_msgs__msg__Int32 *motorPWMMessage = (const std_msgs__msg__Int32 *)msgin;
   int16_t trolleyMotorPWM, hoistMotorPWM;
   splitInt32toInt16(motorPWMMessage->data, trolleyMotorPWM, hoistMotorPWM);
-  if (limitSwitchEncoderSideState || limitSwitchTrolleyMotorSideState)
+  if (limitSwitchEncoderSideState && trolleyMotorPWM < 0)
   {
-    trolleyMotor.setPWM(0);
-    hoistMotor.setPWM(0);
+    trolleyMotorPWM = 0;
   }
-  else
+  if (limitSwitchTrolleyMotorSideState && trolleyMotorPWM > 0)
   {
-    trolleyMotor.setPWM(trolleyMotorPWM);
-    hoistMotor.setPWM(hoistMotorPWM);
+    trolleyMotorPWM = 0;
   }
+  trolleyMotor.setPWM(trolleyMotorPWM);
+  hoistMotor.setPWM(hoistMotorPWM);
 }
 
 void microROSInit()
@@ -158,7 +158,7 @@ void microROSInit()
       &positionPublisher,
       &microcontrollerGantryNode,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-      POSITION_TOPIC_NAME));
+      TROLLEY_POSITION_TOPIC_NAME));
 
   // create timer
   RCCHECK(rclc_timer_init_default(

@@ -1,13 +1,15 @@
 #include "motor.hpp"
 
-Motor::Motor(uint8_t forwardPin, uint8_t reversePin, uint8_t pwmPin, int16_t maxPWM){
+Motor::Motor(uint8_t forwardPin, uint8_t reversePin, uint8_t pwmPin, int16_t maxPWM)
+{
     this->forwardPin = forwardPin;
     this->reversePin = reversePin;
     this->pwmPin = pwmPin;
     this->maxPWM = maxPWM;
 }
 
-void Motor::begin(){
+void Motor::begin()
+{
     pinMode(this->forwardPin, OUTPUT);
     pinMode(this->reversePin, OUTPUT);
     pinMode(this->pwmPin, OUTPUT);
@@ -17,41 +19,51 @@ void Motor::begin(){
     analogWrite(this->pwmPin, 0);
 }
 
-void Motor::setPWM(int16_t PWM){
+void Motor::setPWM(int16_t PWM)
+{
     // Determine the sign of the PWM
     int8_t newSign = (PWM > 0) ? 1 : ((PWM < 0) ? -1 : 0);
 
-    if (newSign != this->pwmCurrentSign) {
-        // Reset the direction pins if sign is changed
+    if (newSign != this->pwmCurrentSign)
+    {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, LOW);
-        // delay(1);  // Delay for stability, adjust if needed
+        analogWrite(this->pwmPin, 0);
         this->pwmCurrentSign = newSign;
     }
 
-    if (PWM > this->maxPWM){
+    if (PWM > this->maxPWM)
+    {
         PWM = this->maxPWM;
-    } else if (PWM < -this->maxPWM){
+    }
+    else if (PWM < -this->maxPWM)
+    {
         PWM = -this->maxPWM;
     }
 
-    if (PWM > 0){
+    if (PWM > 0)
+    {
         digitalWrite(this->forwardPin, HIGH);
         digitalWrite(this->reversePin, LOW);
         analogWrite(this->pwmPin, PWM);
-    } else if (PWM < 0){
+    }
+    else if (PWM < 0)
+    {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, HIGH);
         analogWrite(this->pwmPin, -PWM);
-    } else {
+    }
+    else
+    {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, LOW);
         analogWrite(this->pwmPin, 0);
     }
 }
 
-void Motor::brake(){
+void Motor::brake()
+{
     digitalWrite(this->forwardPin, LOW);
     digitalWrite(this->reversePin, LOW);
-    analogWrite(this->pwmPin, 0);
+    analogWrite(this->pwmPin, 255);
 }

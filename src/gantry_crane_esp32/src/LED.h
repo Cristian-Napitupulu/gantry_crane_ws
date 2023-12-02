@@ -53,7 +53,7 @@ public:
         }
     }
 
-    void pulse(unsigned long pulsePeriod = 1500)
+    void pulse(unsigned long pulsePeriod = 1000)
     {
         if (this->blinkPeriod != pulsePeriod)
         {

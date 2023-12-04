@@ -15,7 +15,7 @@ class RealSenseYOLOServer(Node):
         # Declare and get parameters
         self.declare_parameter(
             "model_path",
-            "/home/cristian/Documents/gantry_crane_ws/src/realsense_camera_yolo/scripts/yolo_model.pt",
+            "/home/icodes/Documents/gantry_crane_ws/src/realsense_camera_yolo/scripts/yolo_model.pt",
         )
         model_path = self.get_parameter("model_path").get_parameter_value().string_value
 

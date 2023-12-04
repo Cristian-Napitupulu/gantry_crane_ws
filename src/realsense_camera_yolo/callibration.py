@@ -11,9 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Points from measurement with realsense camera
-point_A = np.array([0.026, -0.043, 0.501])
-point_B = np.array([0.056, -0.043, 0.499])
-point_C = np.array([0.026, 0.058, 0.490])
+point_A = np.array([0.016, -0.045, 0.531])
+point_B = np.array([0.047, -0.047, 0.530])
+point_C = np.array([0.016, -0.148, 0.540])
 # Print points
 for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
     print(f"Point {label}:", tuple(point))
@@ -93,25 +93,31 @@ t = np.dot(normal_line_direction_vector, point_on_line_on_plane - point_A) / np.
 point_O = point_A + t * normal_line_direction_vector
 print("Point O:", tuple(point_O))
 
+# Calculate the distance between point O and origin
+distance_O = np.linalg.norm(point_O)
+print("Distance O to origin: {}".format(distance_O))
+print("")
+
 # Calculate the distance between point O and point A
 distance_OA = np.linalg.norm(point_O - point_A)
-print("Distance OA: {}".format(distance_OA))
+print("Distance O to point A: {}".format(distance_OA))
 print("")
 
 # Print the callibration matrix
 print("Callibration matrix:")
-print("double A = {};".format(normal_plane_A))
-print("double B = {};".format(normal_plane_B))
-print("double C = {};".format(normal_plane_C))
-print("double D = {};".format(normal_plane_D))
-print("")
-print("double a = {};".format(normal_line_direction_vector[0]))
-print("double b = {};".format(normal_line_direction_vector[1]))
-print("double c = {};".format(normal_line_direction_vector[2]))
-print("")
-print("double x0 = {};".format(point_O[0]))
-print("double y0 = {};".format(point_O[1]))
-print("double z0 = {};".format(point_O[2]))
+print("// Normal plane parameters from equation: Ax + By + Cz + D = 0")
+print("#define NORMAL_PLANE_A {:.7f}".format(normal_plane_A))
+print("#define NORMAL_PLANE_B {:.7f}".format(normal_plane_B))
+print("#define NORMAL_PLANE_C {:.7f}".format(normal_plane_C))
+print("#define NORMAL_PLANE_D {:.7f}".format(normal_plane_D))
+print("// Normal line parameters from equation: (x, y, z) = (x_1, y_1, z_1) + t * (A, B, C)")
+print("#define NORMAL_LINE_A {:.7f}".format(normal_line_direction_vector[0]))
+print("#define NORMAL_LINE_B {:.7f}".format(normal_line_direction_vector[1]))
+print("#define NORMAL_LINE_C {:.7f}".format(normal_line_direction_vector[2]))
+print("// Trolley origin (x0, y0, z0)")
+print("#define TROLLEY_ORIGIN_X {:.7f}".format(point_O[0]))
+print("#define TROLLEY_ORIGIN_Y {:.7f}".format(point_O[1]))
+print("#define TROLLEY_ORIGIN_Z {:.7f}".format(point_O[2]))
 print("")
 
 # Draw the normal line and the normal plane
@@ -137,7 +143,7 @@ ax = fig.add_subplot(111, projection="3d")
 ax.plot_surface(X_plane, Y_plane, Z_plane, alpha=0.5)
 
 normal_line_points = np.array(
-    [point_A + t * normal_line_direction_vector for t in np.linspace(-limit, 0, 10)]
+    [point_A + t * normal_line_direction_vector for t in np.linspace(-10, 10, 100)]
 )
 
 ax.plot(

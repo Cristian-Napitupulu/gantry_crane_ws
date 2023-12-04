@@ -86,6 +86,14 @@ double pointProjections::getAngle(double x, double y, double z)
     {
         angle = -angle;
     }
+    if (angle > M_PI / 2)
+    {
+        angle = M_PI - angle;
+    }
+    else if (angle < -M_PI / 2)
+    {
+        angle = -M_PI - angle;
+    }
 
     return angle;
 }

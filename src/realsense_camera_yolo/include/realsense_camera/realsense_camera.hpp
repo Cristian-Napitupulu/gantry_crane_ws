@@ -3,7 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/float32.hpp>
 
 #include <librealsense2/rs.hpp>
 #include <opencv2/opencv.hpp>
@@ -40,8 +40,8 @@ private:
     // Declare publishers
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr depthImagePublisher;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr colorImagePublisher;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cableLengthPublisher;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr swayAnglePublisher;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr cableLengthPublisher;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr swayAnglePublisher;
 
     // Declare parameters
     std::string depthImageTopic;

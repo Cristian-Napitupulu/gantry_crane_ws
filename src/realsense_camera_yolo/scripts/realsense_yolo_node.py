@@ -8,6 +8,8 @@ from rclpy.node import Node
 from ultralytics import YOLO
 from realsense_camera_yolo_interfaces.srv import RealsenseYOLO
 
+import time
+
 class RealSenseYOLOServer(Node):
     def __init__(self):
         super().__init__("realsense_yolo_node")
@@ -21,6 +23,7 @@ class RealSenseYOLOServer(Node):
 
         # Initialize YOLO model
         self.model = YOLO(model_path)
+
         self.get_logger().info(f"YOLO model loaded from {model_path}")
 
         # Initialize YOLO action server
@@ -45,40 +48,55 @@ class RealSenseYOLOServer(Node):
             cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET
         )
 
+        # Start timer
+        start = time.time()
         # Extract bounding box coordinates from YOLO model results
         results = self.model(
             source=colorized_depth_image, show=False, conf=0.4, save=False
         )
+        # Stop timer
+        end = time.time()
+        execution_time = (end - start) * 1000
 
-        # Draw bounding box on colorized depth image
-        bounding_box = np.round(results[0].boxes.xyxy[0].tolist()).astype(int)
-        imgres = colorized_depth_image
-        color = (255, 255, 255)
-        thickness = 2
-        cv2.rectangle(
-            imgres,
-            (bounding_box[0], bounding_box[1]),
-            (bounding_box[2], bounding_box[3]),
-            color,
-            thickness,
-        )
+        if (results and results[0].boxes):
+            # Get bounding box coordinates
+            bounding_box = np.round(results[0].boxes.xyxy[0].tolist()).astype(int)
 
-        # Check if log level is set to debug before showing the image
-        # if (
-        #     self.get_logger().get_effective_level()
-        #     == rclpy.logging.LoggingSeverity.DEBUG
-        # ):
-            # Show changed perspective colorized depth image
-        cv2.imshow("Image", imgres)
-        cv2.waitKey(1)
+            # Check if log level is set to debug before showing the image
+            if (
+                self.get_logger().get_effective_level()
+                == rclpy.logging.LoggingSeverity.DEBUG
+            ):
+                # Draw bounding box on colorized depth image
+                imgres = colorized_depth_image
+                color = (255, 255, 255)
+                thickness = 2
+                cv2.rectangle(
+                    imgres,
+                    (bounding_box[0], bounding_box[1]),
+                    (bounding_box[2], bounding_box[3]),
+                    color,
+                    thickness,
+                )
+                # Show changed perspective colorized depth image
+                cv2.imshow("Image", imgres)
+                cv2.waitKey(1)
 
-        # Return result
-        result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)
+            # Return result
+            result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)
 
-        # Print result for debugging
-        self.get_logger().info(
-            f"Bounding box: x1: {result.x1}, y1: {result.y1}, x2: {result.x2}, y2: {result.y2}"
-        )
+            # Print result for debugging
+            self.get_logger().info(
+                f"Bounding box: x1: {result.x1}, y1: {result.y1}, x2: {result.x2}, y2: {result.y2}. Execution time: {execution_time:.2f}ms"
+            )
+        else:
+            # Return result
+            result.x1, result.y1, result.x2, result.y2 = -1, -1, -1, -1
+
+            # Print result for debugging
+            self.get_logger().info(
+                f"No bounding box found. Execution time: {execution_time:.2f}ms"
+            )
 
         return result
 

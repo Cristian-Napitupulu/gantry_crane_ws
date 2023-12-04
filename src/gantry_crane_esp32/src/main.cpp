@@ -26,11 +26,19 @@ void setup()
 
   limitSwitchTrolleyMotorSide.begin();
 
-  microROSInit();
-
   ledBuiltIn.turnOff();
 
+  microROSInit();
+
+  Wire.begin();
+
+  if (!analogToDigitalConverter.init())
+  {
+    Serial.println("ADS1115 not connected!");
+  }
+
   findOrigin();
+
 }
 
 void loop()
@@ -39,7 +47,7 @@ void loop()
 
   checkLimitSwitch();
 
-  moveToMiddle();
+  // moveToMiddle();
 
   RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_NS)));
   RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_NS)));
@@ -77,7 +85,7 @@ void findOrigin()
   {
     ledBuiltIn.blink(100);
 
-    for (int i = -50; i > -100; i--)
+    for (int i = -60; i > -120; i--)
     {
       trolleyMotor.setPWM(i);
       delay(10);

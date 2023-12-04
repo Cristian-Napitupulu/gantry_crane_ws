@@ -116,8 +116,8 @@ bool RealSenseCamera::initializeYOLOClient()
 
 void RealSenseCamera::initializePublishers()
 {
-    cableLengthPublisher = create_publisher<std_msgs::msg::Float64>(CABLE_LENGTH_TOPIC_NAME, 10);
-    swayAnglePublisher = create_publisher<std_msgs::msg::Float64>(SWAY_ANGLE_TOPIC_NAME, 10);
+    cableLengthPublisher = create_publisher<std_msgs::msg::Float32>(CABLE_LENGTH_TOPIC_NAME, 10);
+    swayAnglePublisher = create_publisher<std_msgs::msg::Float32>(SWAY_ANGLE_TOPIC_NAME, 10);
     RCLCPP_INFO(get_logger(), "Cable length and sway angle publishers have been initialized.");
 
     if (publishDepth)
@@ -174,6 +174,12 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
         // Get response
         auto response = result.get();
 
+        if (response->x1 == -1 && response->y1 == -1 && response->x2 == -1 && response->y2 == -1)
+        {
+            RCLCPP_WARN(this->get_logger(), "No container detected.");
+            return;
+        }
+
         // Get bounding box pixel
         containerBoundingBoxPixel[0] = response->x1;
         containerBoundingBoxPixel[1] = response->y1;
@@ -217,7 +223,7 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     containerCenterPoint[2] = containerZPosition.getMovingAverage();
 
     // Print container center point for debugging
-    RCLCPP_INFO(get_logger(), "Container center point (x, y, z): ( %.5f , %.5f , %.5f )",
+    RCLCPP_DEBUG(get_logger(), "Container center point (x, y, z): ( %.5f , %.5f , %.5f )",
                 containerCenterPoint[0], containerCenterPoint[1], containerCenterPoint[2]);
 }
 
@@ -235,15 +241,15 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     // Get the sway angle from the normal line
     double sway_angle = projector.getAngle(x, y, z);
     // Convert to degree
-    sway_angle = sway_angle * 180 / M_PI;
+    sway_angle = sway_angle * 180 / M_PI + SWAY_ANGLE_OFFSET;
 
     // Publish cable length
-    auto cable_length_message = std_msgs::msg::Float64();
+    auto cable_length_message = std_msgs::msg::Float32();
     cable_length_message.data = cable_length;
     cableLengthPublisher->publish(cable_length_message);
 
     // Publish sway angle
-    auto sway_angle_message = std_msgs::msg::Float64();
+    auto sway_angle_message = std_msgs::msg::Float32();
     sway_angle_message.data = sway_angle;
     swayAnglePublisher->publish(sway_angle_message);
 

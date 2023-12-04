@@ -1,10 +1,12 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
 
-#include <encoder.hpp>
-#include <motor.hpp>
-#include <debounce.hpp>
 #include <LED.h>
+#include <Wire.h>
+#include <motor.hpp>
+#include <encoder.hpp>
+#include <debounce.hpp>
+#include <ADS1115_WE.h>
 
 #include "parameter.h"
 
@@ -23,5 +25,7 @@ bool limitSwitchEncoderSideState = false;
 bool limitSwitchTrolleyMotorSideState = false;
 
 LED ledBuiltIn(LED_BUILTIN);
+
+ADS1115_WE analogToDigitalConverter = ADS1115_WE(ADS1115_I2C_ADDRESS);
 
 #endif // VARIABLE_H

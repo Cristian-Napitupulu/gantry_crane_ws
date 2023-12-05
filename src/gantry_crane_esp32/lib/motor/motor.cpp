@@ -1,11 +1,12 @@
 #include "motor.hpp"
 
-Motor::Motor(uint8_t forwardPin, uint8_t reversePin, uint8_t pwmPin, int16_t maxPWM)
+Motor::Motor(uint8_t forwardPin, uint8_t reversePin, uint8_t pwmPin, int16_t minPWM, int16_t maxPWM)
 {
     this->forwardPin = forwardPin;
     this->reversePin = reversePin;
     this->pwmPin = pwmPin;
     this->maxPWM = maxPWM;
+    this->minPWM = minPWM;
 }
 
 void Motor::begin()
@@ -21,6 +22,7 @@ void Motor::begin()
 
 void Motor::setPWM(int16_t PWM)
 {
+    PWM = static_cast<int16_t>(PWM);
     // Determine the sign of the PWM
     int8_t newSign = (PWM > 0) ? 1 : ((PWM < 0) ? -1 : 0);
 
@@ -39,6 +41,15 @@ void Motor::setPWM(int16_t PWM)
     else if (PWM < -this->maxPWM)
     {
         PWM = -this->maxPWM;
+    }
+    
+    if (PWM < this->minPWM && PWM > 0)
+    {
+        PWM = this->minPWM;
+    }
+    else if (PWM > -this->minPWM && PWM < 0)
+    {
+        PWM = -this->minPWM;
     }
 
     if (PWM > 0)

@@ -38,7 +38,6 @@ void setup()
   }
 
   findOrigin();
-
 }
 
 void loop()
@@ -56,9 +55,27 @@ void loop()
 
 void checkLimitSwitch()
 {
-  limitSwitchEncoderSide.getState() == LOW ? limitSwitchEncoderSideState = true : limitSwitchEncoderSideState = false;
+  if (limitSwitchEncoderSide.getState() == LOW)
+  {
+    limitSwitchEncoderSideState = true;
+    trolleyMotor.setPWM(0);
+    trolleyMotor.brake();
+  }
+  else
+  {
+    limitSwitchEncoderSideState = false;
+  }
 
-  limitSwitchTrolleyMotorSide.getState() == LOW ? limitSwitchTrolleyMotorSideState = true : limitSwitchTrolleyMotorSideState = false;
+  if (limitSwitchTrolleyMotorSide.getState() == LOW)
+  {
+    limitSwitchTrolleyMotorSideState = true;
+    trolleyMotor.setPWM(0);
+    trolleyMotor.brake();
+  }
+  else
+  {
+    limitSwitchTrolleyMotorSideState = false;
+  }
 }
 
 void findOrigin()
@@ -66,11 +83,11 @@ void findOrigin()
   int counter = 0;
   while (counter < 2)
   {
-    Serial.println("Finding origin");
+    // Serial.println("Finding origin");
     ledBuiltIn.blink(100);
     if (limitSwitchEncoderSide.getState() != LOW)
     {
-      trolleyMotor.setPWM(-75);
+      trolleyMotor.setPWM(-90);
     }
     else
     {
@@ -78,13 +95,14 @@ void findOrigin()
       counter++;
       delay(500);
     }
+    RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_NS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_NS)));
   }
   delay(1000);
   counter = 0;
   while (counter < 2)
   {
     ledBuiltIn.blink(100);
-
     for (int i = -60; i > -120; i--)
     {
       trolleyMotor.setPWM(i);
@@ -94,6 +112,8 @@ void findOrigin()
     trolleyMotor.setPWM(0);
     counter++;
     delay(500);
+    RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_NS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_NS)));
   }
 }
 

@@ -3,35 +3,35 @@
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
             "alpa1": {
-                "value": 10.0,
+                "value": 0.0,
                 "description": "Component of matrix Alpha first row first column"
             },
             "alpa2": {
-                "value": 1.0,
+                "value": 0.0,
                 "description": "Component of matrix Alpha second row second column"
             },
             "beta1": {
-                "value": 10.0,
+                "value": 0.0,
                 "description": "Component of matrix Beta first row first column"
             },
             "beta2": {
-                "value": 1.0,
+                "value": 0.0,
                 "description": "Component of matrix Beta second row second column"
             },
             "lambda1": {
-                "value": 0.01,
+                "value": 0.0,
                 "description": "Component of matrix Lambda first row first column"
             },
             "lambda2": {
-                "value": 0.01,
+                "value": 0.0,
                 "description": "Component of matrix Lambda second row first column"
             },
             "k1": {
-                "value": 1.0,
+                "value": 0.0,
                 "description": "Component of matrix K first row first column"
             },
             "k2": {
-                "value": 1.0,
+                "value": 0.0,
                 "description": "Component of matrix K second row first column"
             }
         }

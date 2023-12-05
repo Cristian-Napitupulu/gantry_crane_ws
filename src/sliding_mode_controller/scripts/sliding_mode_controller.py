@@ -25,6 +25,25 @@ GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_w
 
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/sliding_mode_controller_parameters.json"
 
+# Create a class for moving average filter
+# The data is streamed in real time
+class MovingAverageFilter:
+    def __init__(self, window_size):
+        self.window_size = window_size
+        self.data = []
+        self.sum = 0.0
+
+    def add_data(self, new_data):
+        if len(self.data) == self.window_size:
+            self.sum -= self.data[0]
+            self.data.pop(0)
+
+        self.data.append(new_data)
+        self.sum += new_data
+
+    def get_average(self):
+        return self.sum / len(self.data)
+
 
 class GantryCraneSystem(Node):
     def __init__(self):
@@ -35,9 +54,13 @@ class GantryCraneSystem(Node):
 
         self.parameter(GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH)
 
+        self.moving_average_filters = {}
+
         self.initialize_variables()
 
         self.update_matrices()
+
+        
 
     def initialize_subscribers(self):
         # Initialize subscriber
@@ -96,10 +119,26 @@ class GantryCraneSystem(Node):
             "sway_angle": time.time(),
         }
 
+        self.moving_average_filters["trolley_position"] = MovingAverageFilter(10)
+        self.moving_average_filters["cable_length"] = MovingAverageFilter(10)
+        self.moving_average_filters["sway_angle"] = MovingAverageFilter(10)
+
+
     def process_message(self, variable_name, message):
         timestamp = time.time()
         delta_time = timestamp - self.last_variables_message_timestamp[variable_name]
-        self.variables_value[variable_name] = message.data
+        if (variable_name == "trolley_position"):
+            value = round(message.data, 6)
+
+        if (variable_name == "cable_length"):
+            value = round(message.data, 3)
+
+        if (variable_name == "sway_angle"):
+            value = message.data * np.pi / 180.0
+            value = round(value, 3)
+
+        self.moving_average_filters[variable_name].add_data(value)
+        self.variables_value[variable_name] = self.moving_average_filters[variable_name].get_average()
 
         self.variables_first_derivative[variable_name] = self.calculate_derivative(
             self.variables_value[variable_name],
@@ -120,19 +159,19 @@ class GantryCraneSystem(Node):
         self.last_variables_message_timestamp[variable_name] = time.time()
 
     def trolley_position_callback(self, message):
-        # self.get_logger().info("Trolley position: {:.7f}".format(message.data))
+        # self.get_logger().info("Trolley position: {:.6f}".format(message.data))
         self.process_message("trolley_position", message)
-        # print("Trolley position: {:.7f}, First derivative: {:.7f}, Second derivative: {:.7f}".format(self.variables_value["trolley_position"], self.variables_first_derivative["trolley_position"], self.variables_second_derivative["trolley_position"]))
+        # print("Trolley position: {:.6f}, First derivative: {:.6f}, Second derivative: {:.6f}".format(self.variables_value["trolley_position"], self.variables_first_derivative["trolley_position"], self.variables_second_derivative["trolley_position"]))
 
     def cable_length_callback(self, message):
-        # self.get_logger().info("Cable length: {:.7f}".format(message.data))
+        # self.get_logger().info("Cable length: {:.5f}".format(message.data))
         self.process_message("cable_length", message)
-        # print("Cable length: {:.7f}, First derivative: {:.7f}, Second derivative: {:.7f}".format(self.variables_value["cable_length"], self.variables_first_derivative["cable_length"], self.variables_second_derivative["cable_length"]))
+        # print("Cable length: {:.5f}, First derivative: {:.5f}, Second derivative: {:.5f}".format(self.variables_value["cable_length"], self.variables_first_derivative["cable_length"], self.variables_second_derivative["cable_length"]))
 
     def sway_angle_callback(self, message):
-        # self.get_logger().info("Sway angle: {:.7f}".format(message.data))
+        # self.get_logger().info("Sway angle: {:.3f}".format(message.data))
         self.process_message("sway_angle", message)
-        # print("Sway angle: {:.7f}, First derivative: {:.7f}, Second derivative: {:.7f}".format(self.variables_value["sway_angle"], self.variables_first_derivative["sway_angle"], self.variables_second_derivative["sway_angle"]))
+        print("Sway angle: {:.3f}, First derivative: {:.3f}, Second derivative: {:.3f}".format(self.variables_value["sway_angle"], self.variables_first_derivative["sway_angle"], self.variables_second_derivative["sway_angle"]))
 
     def calculate_derivative(self, current_value, last_value, delta_time):
         return (current_value - last_value) / delta_time
@@ -474,6 +513,7 @@ class Controller(Node):
             [[desired_trolley_position], [desired_cable_length]]
         )
         # print("Desired state vector: ", desiredStateVector)
+
         # State vector
         stateVector = np.matrix(
             [
@@ -482,6 +522,7 @@ class Controller(Node):
             ]
         )
         # print("State vector: ", stateVector)
+
         stateVectorFirstDerivative = np.matrix(
             [
                 [gantry_crane.variables_first_derivative["trolley_position"]],
@@ -489,6 +530,7 @@ class Controller(Node):
             ]
         )
         # print("State vector first derivative: ", stateVectorFirstDerivative)
+
         stateVectorSecondDerivative = np.matrix(
             [
                 [gantry_crane.variables_second_derivative["trolley_position"]],
@@ -531,9 +573,9 @@ class Controller(Node):
             )
             * gantry_crane.variables_first_derivative["sway_angle"]
             + gantry_crane.matrix_F
-            - np.multiply(self.k, np.sign(slidingSurface))
+            - np.multiply(self.k, np.tanh(slidingSurface))
         )
-        print("Control now: ", control_now)
+        # print("Control now: ", control_now)
 
         control_input1 = int(
             self.linear_interpolation(control_now[0, 0], -12.0, -255, 12, 255)
@@ -542,8 +584,27 @@ class Controller(Node):
             self.linear_interpolation(control_now[1, 0], -12.0, -255, 12, 255)
         )
 
-        # print("Control input 1: ", control_input1)
-        # print("Control input 2: ", control_input2)
+        # s_trolley_position = (
+        #     gantry_crane.variables_value["trolley_position"]
+        #     - desired_trolley_position
+        # )
+
+        # s_cable_length = gantry_crane.variables_value["cable_length"] - desired_cable_length
+
+        # control_input1 = - 120 * np.tanh(s_trolley_position)
+
+        # control_input1 = 0
+        # control_input2 = 100
+
+
+        # if (gantry_crane.variables_value["trolley_position"] > 0.0) and (gantry_crane.variables_value["trolley_position"] < 1.0):
+        
+        #     control_input1 = 10
+        #     control_input2 = 0
+
+        # else:
+        #     control_input1 = 0
+        #     control_input2 = 0
 
         if control_input1 > 255:
             control_input1 = 255
@@ -555,7 +616,10 @@ class Controller(Node):
         elif control_input2 < -255:
             control_input2 = -255
 
-        return control_input1, control_input2
+        # print("Control input 1: ", control_input1)
+        # print("Control input 2: ", control_input2)
+
+        return int(control_input1), int(control_input2)
 
 
 if __name__ == "__main__":

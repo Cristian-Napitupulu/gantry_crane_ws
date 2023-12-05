@@ -63,24 +63,24 @@ class RealSenseYOLOServer(Node):
             bounding_box = np.round(results[0].boxes.xyxy[0].tolist()).astype(int)
 
             # Check if log level is set to debug before showing the image
-            if (
-                self.get_logger().get_effective_level()
-                == rclpy.logging.LoggingSeverity.DEBUG
-            ):
-                # Draw bounding box on colorized depth image
-                imgres = colorized_depth_image
-                color = (255, 255, 255)
-                thickness = 2
-                cv2.rectangle(
-                    imgres,
-                    (bounding_box[0], bounding_box[1]),
-                    (bounding_box[2], bounding_box[3]),
-                    color,
-                    thickness,
-                )
-                # Show changed perspective colorized depth image
-                cv2.imshow("Image", imgres)
-                cv2.waitKey(1)
+            # if (
+            #     self.get_logger().get_effective_level()
+            #     == rclpy.logging.LoggingSeverity.DEBUG
+            # ):
+            # Draw bounding box on colorized depth image
+            imgres = colorized_depth_image
+            color = (255, 255, 255)
+            thickness = 2
+            cv2.rectangle(
+                imgres,
+                (bounding_box[0], bounding_box[1]),
+                (bounding_box[2], bounding_box[3]),
+                color,
+                thickness,
+            )
+            # Show changed perspective colorized depth image
+            cv2.imshow("Image", imgres)
+            cv2.waitKey(1)
 
             # Return result
             result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)

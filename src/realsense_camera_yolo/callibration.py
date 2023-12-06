@@ -11,9 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Points from measurement with realsense camera
-point_A = np.array([0.016, -0.045, 0.531])
-point_B = np.array([0.047, -0.047, 0.530])
-point_C = np.array([0.016, -0.148, 0.540])
+point_A = np.array([0.035, -0.054, 0.45])
+point_B = np.array([0.065, -0.053, 0.448])
+point_C = np.array([0.036, -0.155, 0.461])
 # Print points
 for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
     print(f"Point {label}:", tuple(point))
@@ -159,12 +159,13 @@ ax.scatter(point_A[0], point_A[1], point_A[2], color="k", marker=".")
 ax.scatter(point_B[0], point_B[1], point_B[2], color="k", marker=".")
 ax.scatter(point_C[0], point_C[1], point_C[2], color="k", marker=".")
 ax.scatter(point_O[0], point_O[1], point_O[2], color="r", marker="o")
+ax.scatter(0, 0, 0, color="b", marker="x")
 ax.set_xlabel("X")
 ax.set_ylabel("Y")
 ax.set_zlabel("Z")
 ax.set_xlim(-limit, limit)
 ax.set_ylim(-limit, limit)
-ax.set_zlim(0, limit)
+ax.set_zlim(-limit, limit)
 
 ax.view_init(azim=-90, elev=-90)
 plt.show()

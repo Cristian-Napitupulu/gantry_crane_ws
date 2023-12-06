@@ -87,7 +87,7 @@ class RealSenseYOLOServer(Node):
 
             # Print result for debugging
             self.get_logger().info(
-                f"Bounding box: x1: {result.x1}, y1: {result.y1}, x2: {result.x2}, y2: {result.y2}. Execution time: {execution_time:.2f}ms"
+                f"Bounding box: ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
             )
         else:
             # Return result

@@ -32,20 +32,20 @@
 // Callibration parameters
 // Parameters for point projection
 // Normal plane parameters from equation: Ax + By + Cz + D = 0
-#define NORMAL_PLANE_A 0.0000000
-#define NORMAL_PLANE_B -0.1030000
-#define NORMAL_PLANE_C 0.0090000
-#define NORMAL_PLANE_D -0.0094140
+#define NORMAL_PLANE_A 0.0010000
+#define NORMAL_PLANE_B -0.1010000
+#define NORMAL_PLANE_C 0.0110000
+#define NORMAL_PLANE_D -0.0104390
 // Normal line parameters from equation: (x, y, z) = (x_1, y_1, z_1) + t * (A, B, C)
-#define NORMAL_LINE_A -0.0377247
-#define NORMAL_LINE_B -0.0869850
-#define NORMAL_LINE_C -0.9954951
+#define NORMAL_LINE_A -0.0625183
+#define NORMAL_LINE_B -0.1086706
+#define NORMAL_LINE_C -0.9921100
 // Trolley origin (x0, y0, z0)
-#define TROLLEY_ORIGIN_X -0.0038167
-#define TROLLEY_ORIGIN_Y -0.0906930
-#define TROLLEY_ORIGIN_Z 0.0080693
+#define TROLLEY_ORIGIN_X 0.0073188
+#define TROLLEY_ORIGIN_Y -0.1021160
+#define TROLLEY_ORIGIN_Z 0.0107241
 
-#define SWAY_ANGLE_OFFSET -0.524
+#define SWAY_ANGLE_OFFSET 0.0
 
 #define CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE 3
 #define CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE 3

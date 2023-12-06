@@ -122,7 +122,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 void motorPWMCallback(const void *msgin)
 {
   const std_msgs__msg__Int32 *motorPWMMessage = (const std_msgs__msg__Int32 *)msgin;
-  splitInt32toInt16(motorPWMMessage->data, trolleyMotorPWM, hoistMotorPWM);
+  unpackValues(motorPWMMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   if (limitSwitchEncoderSideState && trolleyMotorPWM < 0)
   {
     trolleyMotorPWM = 0;

@@ -14,7 +14,7 @@ Motor trolleyMotor(TROLLEY_MOTOR_FORWARD_PIN, TROLLEY_MOTOR_REVERSE_PIN, TROLLEY
 Motor hoistMotor(HOIST_MOTOR_FORWARD_PIN, HOIST_MOTOR_REVERSE_PIN, HOIST_MOTOR_PWM_PIN, HOIST_MOTOR_PWM_MIN, HOIST_MOTOR_PWM_MAX);
 int16_t trolleyMotorPWM, hoistMotorPWM;
 
-int32_t gantryMode = 0;
+int8_t gantryMode = 0;
 
 Encoder encoderTrolley(ENCODER_CHANNEL_A_PIN, ENCODER_CHANNEL_B_PIN);
 void encoderTrolleyCallback(){

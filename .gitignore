@@ -5,3 +5,7 @@ log/
 ```
 *_venv/
 ```
+src/micro_ros_setup/
+src/uros/
+```
+src/ros2.repos

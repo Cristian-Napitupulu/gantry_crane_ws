@@ -53,7 +53,7 @@
                 "description": "Radius of the pulley connected to the trolley motor"
             },
             "trolley_motor_torque_constant": {
-                "value": 0.05,
+                "value": 20.03,
                 "unit": "Nm/A",
                 "description": "Torque constant of the trolley motor"
             },
@@ -88,7 +88,7 @@
                 "description": "Radius of the pulley connected to the hoist motor"
             },
             "hoist_motor_torque_constant": {
-                "value": 0.08,
+                "value": 33.54,
                 "unit": "Nm/A",
                 "description": "Torque constant of the hoist motor"
             },

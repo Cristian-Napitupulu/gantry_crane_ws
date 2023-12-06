@@ -24,7 +24,7 @@ float readChannel(ADS1115_MUX channel) {
   float voltage = 0.0;
   analogToDigitalConverter.setCompareChannels(channel);
   voltage = analogToDigitalConverter.getResult_V(); // alternative: getResult_mV for Millivolt
-  if (voltage > 0.035) {
+  if (voltage > 0.05) { // If voltage is less than 50 mV, it is considered as noise
     voltage = voltage / VOLTAGE_DIVIDER_RESISTOR_RATIO + FULL_BRIDGE_RECTIFIER_DIODE_VOLTAGE_DROP;
   }
   return voltage;

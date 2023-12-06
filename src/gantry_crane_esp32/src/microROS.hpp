@@ -8,7 +8,7 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 
-#include <std_msgs/msg/int32.h>
+#include <std_msgs/msg/u_int32.h>
 #include <std_msgs/msg/int8.h>
 #include <std_msgs/msg/float32.h>
 
@@ -57,7 +57,7 @@ rcl_timer_t positionPubTimer;
 
 // motor PWM subscribers and executors
 rcl_subscription_t motorPWMSubscriber;
-std_msgs__msg__Int32 motorPWMMessage;
+std_msgs__msg__UInt32 motorPWMMessage;
 rclc_executor_t motorPWMExecutor;
 
 // Trolley Motor Voltage Publisher
@@ -121,7 +121,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 // Subscriber callback function for trolley motor PWM
 void motorPWMCallback(const void *msgin)
 {
-  const std_msgs__msg__Int32 *motorPWMMessage = (const std_msgs__msg__Int32 *)msgin;
+  const std_msgs__msg__UInt32 *motorPWMMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(motorPWMMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   if (limitSwitchEncoderSideState && trolleyMotorPWM < 0)
   {
@@ -139,6 +139,10 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   if (timer != NULL)
   {
     trolleyMotorVoltageMessage.data = readChannel(ADS1115_COMP_0_GND);
+    if (trolleyMotorPWM < 0)
+    {
+      trolleyMotorVoltageMessage.data *= -1;
+    }
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
   }
 }
@@ -149,6 +153,10 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
   if (timer != NULL)
   {
     hoistMotorVoltageMessage.data = readChannel(ADS1115_COMP_1_GND);
+    if (hoistMotorPWM < 0)
+    {
+      hoistMotorVoltageMessage.data *= -1;
+    }
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
   }
 }
@@ -189,6 +197,13 @@ void microROSInit()
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
       TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME));
 
+  // create hoist motor voltage publisher
+  RCCHECK(rclc_publisher_init_default(
+      &hoistMotorVoltagePublisher,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+      HOIST_MOTOR_VOLTAGE_TOPIC_NAME));
+
   // create timer
   // limit switch publisher
   RCCHECK(rclc_timer_init_default(
@@ -223,7 +238,7 @@ void microROSInit()
   RCCHECK(rclc_subscription_init_default(
       &motorPWMSubscriber,
       &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
       MOTOR_PWM_TOPIC_NAME));
 
   // create executor

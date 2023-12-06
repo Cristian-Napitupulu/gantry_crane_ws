@@ -4,12 +4,12 @@
 #include <Arduino.h>
 #include "variable.h"
 
-void unpackValues(int32_t inputInt32, int8_t &mode, int16_t &pwm_trolley, int16_t &pwm_hoist)
+void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolley, int16_t &pwm_hoist)
 {
   // Extract the values from the packed 32-bit integer
-    mode = static_cast<int8_t>(inputInt32 & 0xFF);
-    pwm_trolley = static_cast<int16_t>((inputInt32 >> 8) & 0xFFF);
-    pwm_hoist = static_cast<int16_t>((inputInt32 >> 20) & 0xFFF);
+    gantry_mode = static_cast<int8_t>(packedValue & 0xFF);
+    pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
+    pwm_hoist = static_cast<int16_t>((packedValue >> 20) & 0xFFF);
 
     // Convert two's complement representation back to negative values
     if (pwm_trolley & 0x800) {

@@ -120,7 +120,7 @@ void findOrigin()
     ledBuiltIn.blink(100);
     if (limitSwitchEncoderSide.getState() != LOW)
     {
-      trolleyMotor.setPWM(-90);
+      trolleyMotor.setPWM(-80);
     }
     else
     {

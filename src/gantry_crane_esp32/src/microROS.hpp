@@ -177,11 +177,11 @@ void microROSInit()
   RCCHECK(rclc_node_init_default(&microcontrollerGantryNode, NODE_NAME, "", &support));
 
   // create limit switches publisher
-  RCCHECK(rclc_publisher_init_default(
-      &limitSwitchPublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
-      LIMIT_SWITCH_TOPIC_NAME));
+  // RCCHECK(rclc_publisher_init_default(
+  //     &limitSwitchPublisher,
+  //     &microcontrollerGantryNode,
+  //     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
+  //     LIMIT_SWITCH_TOPIC_NAME));
 
   // create trolley position publisher
   RCCHECK(rclc_publisher_init_default(
@@ -206,11 +206,11 @@ void microROSInit()
 
   // create timer
   // limit switch publisher
-  RCCHECK(rclc_timer_init_default(
-      &limitSwitchPubTimer,
-      &support,
-      RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
-      publishLimitSwitchState));
+  // RCCHECK(rclc_timer_init_default(
+  //     &limitSwitchPubTimer,
+  //     &support,
+  //     RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
+  //     publishLimitSwitchState));
 
   // trolley position publisher
   RCCHECK(rclc_timer_init_default(
@@ -243,8 +243,8 @@ void microROSInit()
 
   // create executor
   // limit switch publisher
-  RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
+  // RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
+  // RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
 
   // trolley position publisher
   RCCHECK(rclc_executor_init(&positionPubExecutor, &support.context, 1, &allocator));

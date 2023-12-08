@@ -32,6 +32,7 @@ DESIRED_CABLE_LENGTH = 0.4
 
 
 
+
 GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/gantry_crane_parameters.json"
 
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/sliding_mode_controller_parameters.json"
@@ -633,7 +634,7 @@ class Controller(Node):
             self.linear_interpolation(control_now[1, 0], -12.0, -255, 12, 255)
         )
 
-        time.sleep(0.2)
+        # time.sleep(0.2)
 
         # s_trolley_position = (
         #     gantry_crane.variables_value["trolley_position"]
@@ -643,9 +644,13 @@ class Controller(Node):
         # s_cable_length = gantry_crane.variables_value["cable_length"] - desired_cable_length
 
         # control_input1 = - 120 * np.tanh(s_trolley_position)
+        if gantry_crane.variables_value["trolley_position"] > 1.0:
+            control_input1 = 0
+        else:
+            control_input1 = 90
+            control_input2 = 0
 
-        control_input1 = 80
-        control_input2 = -180
+        # time.sleep(1)
 
         if control_input1 > 255:
             control_input1 = 255

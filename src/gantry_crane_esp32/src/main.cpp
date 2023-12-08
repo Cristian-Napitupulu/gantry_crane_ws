@@ -6,7 +6,7 @@
 #include "microROS.hpp"
 #include "ADC.hpp"
 
-float readChannel(ADS1115_MUX channel);
+// float readChannel(ADS1115_MUX channel);
 
 void findOrigin();
 
@@ -104,7 +104,7 @@ void loop()
   trolleyMotor.setPWM(trolleyMotorPWM);
   hoistMotor.setPWM(hoistMotorPWM);
 
-  RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
+  // RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
   RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
   RCSOFTCHECK(rclc_executor_spin_some(&motorPWMExecutor, RCL_MS_TO_NS(MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS)));
   RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
@@ -135,15 +135,15 @@ void findOrigin()
   while (counter < 2)
   {
     ledBuiltIn.blink(100);
-    for (int i = -60; i > -120; i--)
+    for (int i = -60; i > -100; i--)
     {
       trolleyMotor.setPWM(i);
       delay(10);
     }
-    encoderTrolley.reset();
     trolleyMotor.setPWM(0);
     counter++;
     delay(500);
+    encoderTrolley.reset();
     RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
   }
 }

@@ -13,7 +13,7 @@
                 "description": "Mass of the container"
             },
             "trolley_damping_coefficient": {
-                "value": 10.0,
+                "value": 0.5,
                 "unit": "Ns/m",
                 "description": "Damping coefficient of the trolley"
             },
@@ -58,7 +58,7 @@
                 "description": "Torque constant of the trolley motor"
             },
             "trolley_motor_back_emf_constant": {
-                "value": 0.5,
+                "value": 0.00818,
                 "unit": "V/(rad/s)",
                 "description": "Back EMF constant of the trolley motor"
             },

@@ -31,8 +31,6 @@ DESIRED_TROLLEY_POSITION = 1.0
 DESIRED_CABLE_LENGTH = 0.4
 
 
-
-
 GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/gantry_crane_parameters.json"
 
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/sliding_mode_controller_parameters.json"
@@ -467,13 +465,15 @@ class Controller(Node):
             pwm_hoist = 0xFFF + pwm_hoist + 1
 
         # Pack the values into a 32-bit integer
-        packed_value = (mode & 0xFF) | ((pwm_trolley & 0xFFF) << 8) | ((pwm_hoist & 0xFFF) << 20)
+        packed_value = (
+            (mode & 0xFF) | ((pwm_trolley & 0xFFF) << 8) | ((pwm_hoist & 0xFFF) << 20)
+        )
         return packed_value
 
     def publish_motor_pwm(self, gantry_mode, trolley_motor_pwm, hoist_motor_pwm):
         message = UInt32()
         message.data = self.packValues(gantry_mode, trolley_motor_pwm, hoist_motor_pwm)
-        self.get_logger().info("Publishing: {}. Mode: {}. Troley motor PWM: {}. Hoist motor PWM: {}".format(message.data, gantry_mode, trolley_motor_pwm, hoist_motor_pwm))
+        # self.get_logger().info("Publishing: {}. Mode: {}. Troley motor PWM: {}. Hoist motor PWM: {}".format(message.data, gantry_mode, trolley_motor_pwm, hoist_motor_pwm))
         self.motor_pwm_publisher.publish(message)
 
     def parameter(self, parameter_json_path):
@@ -609,6 +609,14 @@ class Controller(Node):
         # )
 
         # print(
+        #     (
+        #         gantry_crane.matrix_C
+        #         - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
+        #     )
+        # )
+        # print("")
+        # time.sleep(0.5)
+        # print(
         #     gantry_crane.matrix_D
         #     * gantry_crane.variables_second_derivative["sway_angle"]
         # )
@@ -625,7 +633,7 @@ class Controller(Node):
 
         # print(np.multiply(self.k, np.tanh(slidingSurface)))
 
-        # print("Control now: ", control_now)
+        print("Control now: ", control_now)
 
         control_input1 = int(
             self.linear_interpolation(control_now[0, 0], -12.0, -255, 12, 255)
@@ -667,6 +675,7 @@ class Controller(Node):
 
         return int(control_input1), int(control_input2)
 
+
 if __name__ == "__main__":
     rclpy.init()
     gantry_crane = GantryCraneSystem()
@@ -683,7 +692,9 @@ if __name__ == "__main__":
             )
 
             gantryMode = IDLE_MODE
-            slidingModeController.publish_motor_pwm(gantryMode, trolley_motor_pwm, hoist_motor_pwm)
+            slidingModeController.publish_motor_pwm(
+                gantryMode, trolley_motor_pwm, hoist_motor_pwm
+            )
 
             rclpy.spin_once(gantry_crane, timeout_sec=0.02)
             rclpy.spin_once(slidingModeController, timeout_sec=0.02)

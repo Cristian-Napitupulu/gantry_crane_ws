@@ -10,6 +10,7 @@ from realsense_camera_yolo_interfaces.srv import RealsenseYOLO
 
 import time
 
+
 class RealSenseYOLOServer(Node):
     def __init__(self):
         super().__init__("realsense_yolo_node")
@@ -58,15 +59,10 @@ class RealSenseYOLOServer(Node):
         end = time.time()
         execution_time = (end - start) * 1000
 
-        if (results and results[0].boxes):
+        if results and results[0].boxes:
             # Get bounding box coordinates
             bounding_box = np.round(results[0].boxes.xyxy[0].tolist()).astype(int)
 
-            # Check if log level is set to debug before showing the image
-            # if (
-            #     self.get_logger().get_effective_level()
-            #     == rclpy.logging.LoggingSeverity.DEBUG
-            # ):
             # Draw bounding box on colorized depth image
             imgres = colorized_depth_image
             color = (255, 255, 255)
@@ -78,7 +74,11 @@ class RealSenseYOLOServer(Node):
                 color,
                 thickness,
             )
-            # Show changed perspective colorized depth image
+            center = (
+                int((bounding_box[0] + bounding_box[2]) / 2),
+                int((bounding_box[1] + bounding_box[3]) / 2),
+            )
+            cv2.circle(imgres, center, 3, (0, 0, 255), thickness=cv2.FILLED)
             cv2.imshow("Image", imgres)
             cv2.waitKey(1)
 
@@ -87,7 +87,7 @@ class RealSenseYOLOServer(Node):
 
             # Print result for debugging
             self.get_logger().info(
-                f"Bounding box: ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
+                f"Bounding box (pixel): ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
             )
         else:
             # Return result

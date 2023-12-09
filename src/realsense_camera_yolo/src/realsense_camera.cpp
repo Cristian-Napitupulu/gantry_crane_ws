@@ -223,7 +223,7 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     containerCenterPoint[2] = containerZPosition.getMovingAverage();
 
     // Print container center point for debugging
-    RCLCPP_DEBUG(get_logger(), "Container center point (x, y, z): ( %.5f , %.5f , %.5f )",
+    RCLCPP_INFO(get_logger(), "Container center point (x, y, z) (meters): (%.5f, %.5f, %.5f)",
                 containerCenterPoint[0], containerCenterPoint[1], containerCenterPoint[2]);
 }
 

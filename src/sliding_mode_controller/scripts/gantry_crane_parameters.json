@@ -38,7 +38,7 @@
                 "description": "Resistance of the trolley motor"
             },
             "trolley_motor_rotator_inertia": {
-                "value": 0.0007,
+                "value": 0.00008859375,
                 "unit": "kg.m^2",
                 "description": "Rotational inertia of the trolley motor rotor"
             },
@@ -73,7 +73,7 @@
                 "description": "Resistance of the hoist motor"
             },
             "hoist_motor_rotator_inertia": {
-                "value": 0.0005,
+                "value": 0.000015625,
                 "unit": "kg.m^2",
                 "description": "Rotational inertia of the hoist motor rotor"
             },
@@ -93,7 +93,7 @@
                 "description": "Torque constant of the hoist motor"
             },
             "hoist_motor_back_emf_constant": {
-                "value": 0.08,
+                "value": 0.00818,
                 "unit": "V/(rad/s)",
                 "description": "Back EMF constant of the hoist motor"
             }

@@ -47,55 +47,88 @@ void setup()
   // Find origin
   findOrigin();
 
-  // while (gantryMode == IDLE_MODE)
-  // {
-  //   RCSOFTCHECK(rclc_executor_spin_some(&motorPWMExecutor, RCL_MS_TO_NS(MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS)));
-  // }
+  gantryMode = IDLE_MODE;
 }
-
+unsigned long lastTime = 0;
+bool inside = false;
 void loop()
 {
-  // if (gantryMode == COLLECT_DATA_MODE)
-  // {
-  //   RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
-  //   RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-  //   RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-  // }
+  if (gantryMode == IDLE_MODE)
+  {
+    // Do nothing
+    trolleyMotorPWM = 0;
+    hoistMotorPWM = 0;
+  }
 
-  // else if (gantryMode == IDLE_MODE)
-  // {
-  //   // Do nothing
-  // }
+  else if (gantryMode == COLLECT_DATA_MODE)
+  {
+    RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+  }
 
-  // else if (gantryMode == MOVE_TO_ORIGIN_MODE)
-  // {
-  //   findOrigin();
-  // }
+  else if (gantryMode == MOVE_TO_ORIGIN_MODE)
+  {
+    if (limitSwitchEncoderSide.getState() != LOW)
+    {
+      trolleyMotorPWM = -80;
+      hoistMotorPWM = 0;
+    }
+    else
+    {
+      trolleyMotorPWM = 0;
+      gantryMode = IDLE_MODE;
+    }
+  }
 
-  // else if (gantryMode == MOVE_TO_MIDDLE_MODE)
-  // {
-  //   moveToMiddle();
-  // }
+  else if (gantryMode == MOVE_TO_MIDDLE_MODE)
+  {
+    trolleyMotorPWM = static_cast<int16_t>(pidTrolley.calculate(ENCODER_MAX_VALUE / 2, encoderTrolley.getPulse()));
+    hoistMotorPWM = 0;
 
-  // else if (gantryMode == MOVE_TO_END_MODE)
-  // {
-  //   // Move to end
-  // }
+    if (!inside && (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.1 * ENCODER_MAX_VALUE))
+    {
+      lastTime = millis();
+      inside = true;
+    }
+    else if (inside && (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) > 0.1 * ENCODER_MAX_VALUE))
+    {
+      inside = false;
+    }
 
-  // else if (gantryMode == LOCK_CONTAINER_MODE)
-  // {
-  //   // Lock container
-  // }
+    if (inside && (millis() - lastTime > 5000))
+    {
+      gantryMode = IDLE_MODE;
+    }
+  }
 
-  // else if (gantryMode == UNLOCK_CONTAINER_MODE)
-  // {
-  //   // Unlock container
-  // }
+  else if (gantryMode == MOVE_TO_END_MODE)
+  {
+    if (limitSwitchTrolleyMotorSide.getState() != LOW)
+    {
+      trolleyMotorPWM = 80;
+      hoistMotorPWM = 0;
+    }
+    else
+    {
+      trolleyMotorPWM = 0;
+      gantryMode = IDLE_MODE;
+    }
+  }
 
-  // else
-  // {
-  //   // Do nothing
-  // }
+  else if (gantryMode == LOCK_CONTAINER_MODE)
+  {
+    // Lock container
+  }
+
+  else if (gantryMode == UNLOCK_CONTAINER_MODE)
+  {
+    // Unlock container
+  }
+
+  else
+  {
+    gantryMode = IDLE_MODE;
+  }
 
   ledBuiltIn.pulse();
 
@@ -104,11 +137,8 @@ void loop()
   trolleyMotor.setPWM(trolleyMotorPWM);
   hoistMotor.setPWM(hoistMotorPWM);
 
-  // RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
   RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
   RCSOFTCHECK(rclc_executor_spin_some(&motorPWMExecutor, RCL_MS_TO_NS(MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS)));
-  // RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-  // RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
 }
 
 void findOrigin()

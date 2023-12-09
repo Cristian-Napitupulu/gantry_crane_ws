@@ -7,17 +7,19 @@
 void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolley, int16_t &pwm_hoist)
 {
   // Extract the values from the packed 32-bit integer
-    gantry_mode = static_cast<int8_t>(packedValue & 0xFF);
-    pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
-    pwm_hoist = static_cast<int16_t>((packedValue >> 20) & 0xFFF);
+  gantry_mode = static_cast<int8_t>(packedValue & 0xFF);
+  pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
+  pwm_hoist = static_cast<int16_t>((packedValue >> 20) & 0xFFF);
 
-    // Convert two's complement representation back to negative values
-    if (pwm_trolley & 0x800) {
-        pwm_trolley = pwm_trolley - 0xFFF - 1;
-    }
-    if (pwm_hoist & 0x800) {
-        pwm_hoist = pwm_hoist - 0xFFF - 1;
-    }
+  // Convert two's complement representation back to negative values
+  if (pwm_trolley & 0x800)
+  {
+    pwm_trolley = pwm_trolley - 0xFFF - 1;
+  }
+  if (pwm_hoist & 0x800)
+  {
+    pwm_hoist = pwm_hoist - 0xFFF - 1;
+  }
 }
 
 float map_value(float x, float in_min, float in_max, float out_min, float out_max)
@@ -58,13 +60,17 @@ void checkLimitSwitch()
     trolleyMotorPWM = 0;
     hoistMotorPWM = 0;
   }
-}
 
-void moveToMiddle()
-{
-  int32_t error = (ENCODER_MAX_VALUE - ENCODER_MIN_VALUE) / 2 - encoderTrolley.getPulse();
-  int16_t pwm = 255 * error / ((ENCODER_MAX_VALUE - ENCODER_MIN_VALUE) / 2);
-  trolleyMotor.setPWM(pwm);
+  // Protect system at high speed by reducing PWM by half
+  if ((encoderTrolley.getPulse() > 0.8 * ENCODER_MAX_VALUE) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
+  {
+    trolleyMotorPWM /= 2;
+  }
+
+  if ((encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE) && (trolleyMotorPWM < -0.8 * TROLLEY_MOTOR_PWM_MAX))
+  {
+    trolleyMotorPWM /= 2;
+  }
 }
 
 #endif // UTILITY_H

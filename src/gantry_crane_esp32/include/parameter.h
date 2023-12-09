@@ -44,10 +44,10 @@
 
 // Maximum and minimum PWM values for trolley motor
 #define TROLLEY_MOTOR_PWM_MAX 150
-#define TROLLEY_MOTOR_PWM_MIN 70
+#define TROLLEY_MOTOR_PWM_MIN 0
 
 // Maximum and minimum PWM values for hoist motor
-#define HOIST_MOTOR_PWM_MAX 255
+#define HOIST_MOTOR_PWM_MAX 200
 #define HOIST_MOTOR_PWM_MIN 0
 
 // Encoder

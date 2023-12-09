@@ -52,6 +52,12 @@ void checkLimitSwitch()
   {
     limitSwitchTrolleyMotorSideState = false;
   }
+
+  if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
+  {
+    trolleyMotorPWM = 0;
+    hoistMotorPWM = 0;
+  }
 }
 
 void moveToMiddle()

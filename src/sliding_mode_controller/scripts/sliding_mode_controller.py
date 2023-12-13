@@ -135,15 +135,15 @@ class GantryCraneSystem(Node):
     def process_message(self, variable_name, message):
         timestamp = time.time()
         delta_time = timestamp - self.last_variables_message_timestamp[variable_name]
+        
         if variable_name == "trolley_position":
-            value = round(message.data, 4)
+            value = round(message.data, 5)
 
         if variable_name == "cable_length":
-            value = round(message.data, 2)
+            value = round(message.data, 3)
 
         if variable_name == "sway_angle":
-            value = message.data * np.pi / 180.0
-            value = round(value, 4)
+            value = round(message.data, 3) * np.pi / 180.0
 
         # self.moving_average_filters[variable_name].add_data(value)
         self.variables_value[variable_name] = value
@@ -524,8 +524,6 @@ class Controller(Node):
         desiredStateVector = np.matrix(
             [[desired_trolley_position], [desired_cable_length]]
         )
-        # print("Desired state vector: ", desiredStateVector)
-
         # State vector
         stateVector = np.matrix(
             [
@@ -533,10 +531,10 @@ class Controller(Node):
                 [gantry_crane.variables_value["cable_length"]],
             ]
         )
-        if stateVector[0,0] == 0.0 or stateVector[1,0] == 0.0:
-            return 0, 0
-        
-        # print("State vector: ", stateVector)
+        # if stateVector[0, 0] == 0.0 or stateVector[1, 0] == 0.0:
+        #     return 0, 0
+
+        print("Desired state vector: {}, State vector: {}".format(desiredStateVector, stateVector))
 
         stateVectorFirstDerivative = np.matrix(
             [
@@ -544,7 +542,6 @@ class Controller(Node):
                 [gantry_crane.variables_first_derivative["cable_length"]],
             ]
         )
-        # print("State vector first derivative: ", stateVectorFirstDerivative)
 
         stateVectorSecondDerivative = np.matrix(
             [
@@ -552,7 +549,7 @@ class Controller(Node):
                 [gantry_crane.variables_second_derivative["cable_length"]],
             ]
         )
-        # print("State vector second derivative: ", stateVectorSecondDerivative)
+        print("State vector first derivative: {}, State vector second derivative: {}".format(stateVectorFirstDerivative, stateVectorSecondDerivative))
 
         # Sliding surface
         # slidingSurface = np.matrix([[0.0], [0.0]])
@@ -564,38 +561,45 @@ class Controller(Node):
         # )
 
         # Simplified sliding surface
-        slidingSurface = np.matmul(self.matrix_alpha, stateVector - desiredStateVector) + np.matmul(self.matrix_beta, stateVectorFirstDerivative)
-        # print("Sliding surface: ", slidingSurface)
+        slidingSurface = (
+            np.matmul(self.matrix_alpha, stateVector - desiredStateVector)
+            + np.matmul(self.matrix_beta, stateVectorFirstDerivative)
+            + stateVectorSecondDerivative
+        )
+        print("Sliding surface: ", slidingSurface)
 
         control_now = np.matrix([[0.0], [0.0]])
         control_now = (
-            np.matmul(
-                (
-                    gantry_crane.matrix_B
-                    - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
-                ),
-                stateVectorSecondDerivative,
-            )
-            + np.matmul(
-                (
-                    gantry_crane.matrix_C
-                    - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
-                ),
-                stateVectorFirstDerivative,
-            )
+            # np.matmul(
+            #     (
+            #         gantry_crane.matrix_B
+            #         - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
+            #     ),
+            #     stateVectorSecondDerivative,
+            # )
+            # + np.matmul(
+            #     (
+            #         gantry_crane.matrix_C
+            #         - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
+            #     ),
+            #     stateVectorFirstDerivative,
+            # )
             + gantry_crane.matrix_D
             * gantry_crane.variables_second_derivative["sway_angle"]
-            + (
-                gantry_crane.matrix_E
-                - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
-            )
-            * gantry_crane.variables_first_derivative["sway_angle"]
-            + gantry_crane.matrix_F
+            # + (
+            #     gantry_crane.matrix_E
+            #     - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
+            # )
+            # * gantry_crane.variables_first_derivative["sway_angle"]
+            # + gantry_crane.matrix_F
         )
-        
-        multiplier = np.array([[1.0], [5.0]])
+        time.sleep(0.1)
+
+        # multiplier = np.array([[1.0], [1.0]])
         # Simplified control
-        control_now = - np.multiply(self.k, np.tanh(np.multiply(multiplier,slidingSurface)))
+        # control_now = control_now -np.multiply(
+        #     self.k, np.tanh(np.multiply(multiplier, slidingSurface))
+        # )
 
         # print(
         #     np.matmul(
@@ -661,11 +665,12 @@ class Controller(Node):
         # s_cable_length = gantry_crane.variables_value["cable_length"] - desired_cable_length
 
         # control_input1 = - 120 * np.tanh(s_trolley_position)
-        # if gantry_crane.variables_value["trolley_position"] > 1.0:
-        #     control_input1 = 0
-        # else:
-        # control_input1 = 0
-        # control_input2 = -150
+        if gantry_crane.variables_value["trolley_position"] < 1.0:
+            control_input1 = 80
+            control_input2 = 0
+        else:
+            control_input1 = 0
+            control_input2 = 0
 
         # time.sleep(1)
 
@@ -700,10 +705,16 @@ if __name__ == "__main__":
                 gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
             )
 
-            gantryMode = IDLE_MODE
+            # gantryMode = COLLECT_DATA_MODE
+            # slidingModeController.publish_motor_pwm(
+            #     gantryMode, trolley_motor_pwm, hoist_motor_pwm
+            # )
+
+            gantryMode = MOVE_TO_MIDDLE_MODE
             slidingModeController.publish_motor_pwm(
-                gantryMode, trolley_motor_pwm, hoist_motor_pwm
+                gantryMode, 0.0, 0.0
             )
+            
 
             rclpy.spin_once(gantry_crane, timeout_sec=0.02)
             rclpy.spin_once(slidingModeController, timeout_sec=0.02)

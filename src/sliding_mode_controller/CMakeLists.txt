@@ -14,6 +14,7 @@ find_package(rclpy REQUIRED)
 ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
+  scripts/pid_controller.py
   scripts/sliding_mode_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )

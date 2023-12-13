@@ -16,6 +16,7 @@
 #include "variable.h"
 #include "utility.h"
 #include "ADC.hpp"
+#include "lookUpTable.hpp"
 
 #if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
 #error This script is only available for Arduino framework with serial transport.
@@ -113,6 +114,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
   if (timer != NULL)
   {
     float position = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
+    // float position = static_cast<float>(encoderTrolley.getPulse());
     positionMessage.data = position;
     RCSOFTCHECK(rcl_publish(&positionPublisher, &positionMessage, NULL));
   }
@@ -138,25 +140,21 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   (void)last_call_time;
   if (timer != NULL)
   {
-    trolleyMotorVoltageMessage.data = readChannel(ADS1115_COMP_0_GND);
-    if (trolleyMotorPWM < 0)
-    {
-      trolleyMotorVoltageMessage.data *= -1;
-    }
+    trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
+    trolleyMotorVoltageMessage.data = findMultimeterValue(trolleyMotorVoltageMovingAverage.getMovingAverage());
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
   }
 }
 
+unsigned long last_time = 0;
+float last_current = 0;
 void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
   (void)last_call_time;
   if (timer != NULL)
   {
-    hoistMotorVoltageMessage.data = readChannel(ADS1115_COMP_1_GND);
-    if (hoistMotorPWM < 0)
-    {
-      hoistMotorVoltageMessage.data *= -1;
-    }
+    hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
+    hoistMotorVoltageMessage.data = hoistMotorVoltageMovingAverage.getMovingAverage();
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
   }
 }
@@ -166,7 +164,6 @@ void microROSInit()
   // Configure serial transport
   Serial.begin(SERIAL_BAUDRATE);
   set_microros_serial_transports(Serial);
-  delay(2000);
 
   allocator = rcl_get_default_allocator();
 

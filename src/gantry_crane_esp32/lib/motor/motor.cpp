@@ -14,6 +14,8 @@ void Motor::begin()
     pinMode(this->forwardPin, OUTPUT);
     pinMode(this->reversePin, OUTPUT);
     pinMode(this->pwmPin, OUTPUT);
+    analogWriteResolution(PWM_RESOLUTION);
+    analogWriteFrequency(PWM_FREQUENCY);
 
     digitalWrite(this->forwardPin, LOW);
     digitalWrite(this->reversePin, LOW);
@@ -23,16 +25,6 @@ void Motor::begin()
 void Motor::setPWM(int16_t PWM)
 {
     PWM = static_cast<int16_t>(PWM);
-    // Determine the sign of the PWM
-    int8_t newSign = (PWM > 0) ? 1 : ((PWM < 0) ? -1 : 0);
-
-    if (newSign != this->pwmCurrentSign)
-    {
-        digitalWrite(this->forwardPin, LOW);
-        digitalWrite(this->reversePin, LOW);
-        analogWrite(this->pwmPin, 0);
-        this->pwmCurrentSign = newSign;
-    }
 
     if (PWM > this->maxPWM)
     {
@@ -54,8 +46,8 @@ void Motor::setPWM(int16_t PWM)
 
     if (PWM > 0)
     {
-        digitalWrite(this->forwardPin, HIGH);
         digitalWrite(this->reversePin, LOW);
+        digitalWrite(this->forwardPin, HIGH);
         analogWrite(this->pwmPin, PWM);
     }
     else if (PWM < 0)

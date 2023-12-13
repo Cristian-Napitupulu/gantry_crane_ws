@@ -43,11 +43,11 @@
 */
 
 // Maximum and minimum PWM values for trolley motor
-#define TROLLEY_MOTOR_PWM_MAX 150
+#define TROLLEY_MOTOR_PWM_MAX 1023
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Maximum and minimum PWM values for hoist motor
-#define HOIST_MOTOR_PWM_MAX 200
+#define HOIST_MOTOR_PWM_MAX 1023
 #define HOIST_MOTOR_PWM_MIN 0
 
 // Encoder
@@ -57,7 +57,10 @@
 #define POSITION_MAX_VALUE 1.5
 #define POSITION_MIN_VALUE 0
 
-/*Pin definitions 
+#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+
+/*Pin definitions
 * When choosing a pin, make sure it is not conflicting with other pins.
 * For more information, see https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 * Pin 0 and 1 are used for serial communication, so don't use them.
@@ -105,6 +108,7 @@
 #define MOVE_TO_END_MODE 0x3F
 #define LOCK_CONTAINER_MODE 0x4F
 #define UNLOCK_CONTAINER_MODE 0x5F
+#define CONTROL_MODE 0x6F
 #define COLLECT_DATA_MODE 0xFF
 
 
@@ -114,10 +118,9 @@
 
 
 // PID constants
-#define TROLLEY_MOTOR_KP 0.01
-#define TROLLEY_MOTOR_KI 0.07
-#define TROLLEY_MOTOR_KD 0.5
+#define TROLLEY_MOTOR_KP 0.03
+#define TROLLEY_MOTOR_KI 0.3
+#define TROLLEY_MOTOR_KD 0.00001
 #define TROLLEY_MOTOR_MAX_INTEGRAL 1000
-#define TROLLEY_MOTOR_MAX_OUTPUT 255
 
 #endif

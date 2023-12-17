@@ -57,22 +57,18 @@ void analogToDigitalConverterInit()
   {
     Serial.println("ADS1115 not connected!");
   }
-  analogToDigitalConverter.setVoltageRange_mV(ADS1115_RANGE_6144);
+  analogToDigitalConverter.setVoltageRange_mV(ADS1115_RANGE_4096);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_0_GND);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_1_GND);
+  analogToDigitalConverter.setCompareChannels(ADS1115_COMP_2_GND);
+  analogToDigitalConverter.setCompareChannels(ADS1115_COMP_3_GND);
   analogToDigitalConverter.setMeasureMode(ADS1115_CONTINUOUS);
 }
 
 float readChannel(ADS1115_MUX channel) {
   float voltage = 0.0;
   analogToDigitalConverter.setCompareChannels(channel);
-  voltage = analogToDigitalConverter.getResult_V(); // alternative: getResult_mV for Millivolt
-  // if (voltage > 0.1) { // If voltage is less than 100 mV, it is considered as noise
-  //   voltage = voltage / VOLTAGE_DIVIDER_RESISTOR_RATIO + FULL_BRIDGE_RECTIFIER_DIODE_VOLTAGE_DROP;
-  // }
-  // else {
-  //   voltage = 0.0;
-  // }
+  voltage = analogToDigitalConverter.getResult_V(); 
   return voltage;
 }
 

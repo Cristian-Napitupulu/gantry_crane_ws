@@ -34,7 +34,7 @@ void Motor::setPWM(int16_t PWM)
     {
         PWM = -this->maxPWM;
     }
-    
+
     if (PWM < this->minPWM && PWM > 0)
     {
         PWM = this->minPWM;
@@ -44,10 +44,17 @@ void Motor::setPWM(int16_t PWM)
         PWM = -this->minPWM;
     }
 
+    if (PWM == currentPWM)
+    {
+        return;
+    }
+
+    this->currentPWM = PWM;
+
     if (PWM > 0)
     {
-        digitalWrite(this->reversePin, LOW);
         digitalWrite(this->forwardPin, HIGH);
+        digitalWrite(this->reversePin, LOW);
         analogWrite(this->pwmPin, PWM);
     }
     else if (PWM < 0)
@@ -56,7 +63,7 @@ void Motor::setPWM(int16_t PWM)
         digitalWrite(this->reversePin, HIGH);
         analogWrite(this->pwmPin, -PWM);
     }
-    else
+    else if (PWM == 0)
     {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, LOW);
@@ -68,5 +75,5 @@ void Motor::brake()
 {
     digitalWrite(this->forwardPin, LOW);
     digitalWrite(this->reversePin, LOW);
-    analogWrite(this->pwmPin, 255);
+    analogWrite(this->pwmPin, this->maxPWM);
 }

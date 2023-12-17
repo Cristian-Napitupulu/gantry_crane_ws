@@ -14,23 +14,23 @@
 
 // micro-ROS executor timeout
 // trolley position publisher
-#define POSITION_PUBLISH_PERIOD_MS 10
-#define POSITION_PUBLISH_TIMEOUT_MS 12
+#define POSITION_PUBLISH_PERIOD_MS 5
+#define POSITION_PUBLISH_TIMEOUT_MS 10
 
 // limit switch publisher
 #define LIMIT_SWITCH_PUBLISH_PERIOD_MS 5
-#define LIMIT_SWITCH_PUBLISH_TIMEOUT_MS 7
+#define LIMIT_SWITCH_PUBLISH_TIMEOUT_MS 10
 
 // trolley motor voltage publisher
-#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 10
-#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 12
+#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 5
+#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
 
 // hoist motor voltage publisher
-#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 10
-#define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 12
+#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 5
+#define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
 
 // motor PWM subscriber
-#define MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS 10
+#define MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS 5
 
 /*Minimum and maximum PWM values
 * Minimum PWM value is the value when the motor is barely moving (dead zone)
@@ -42,14 +42,15 @@
 * Used for protection 
 */
 
-// Maximum and minimum PWM values for trolley motor
-#define TROLLEY_MOTOR_PWM_MAX 1023
-#define TROLLEY_MOTOR_PWM_MIN 0
+// Operating PWM values for trolley motor
+#define TROLLEY_MOTOR_PWM_MAX 850
+#define TROLLEY_MOTOR_PWM_MIN 600
 
-// Maximum and minimum PWM values for hoist motor
+// Operating PWM values for hoist motor
 #define HOIST_MOTOR_PWM_MAX 1023
-#define HOIST_MOTOR_PWM_MIN 0
+#define HOIST_MOTOR_PWM_MIN 0       //  700
 
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 635
 // Encoder
 // Got from measurement
 #define ENCODER_MAX_VALUE 27000
@@ -78,8 +79,8 @@
 #define TROLLEY_MOTOR_PWM_PIN 25
 
 // Hoist motor pins
-#define HOIST_MOTOR_FORWARD_PIN 12
-#define HOIST_MOTOR_REVERSE_PIN 13
+#define HOIST_MOTOR_FORWARD_PIN 13
+#define HOIST_MOTOR_REVERSE_PIN 12
 #define HOIST_MOTOR_PWM_PIN 14
 
 // Limit switches pins
@@ -98,9 +99,6 @@
 #define LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_TRIGGERED 0x4F
 #define LIMIT_SWITCH_BOTH_TRIGGERED 0x6F
 
-// Command for brake motor
-#define COMMAND_BRAKE_MOTOR 0xFFFF
-
 // Mode
 #define IDLE_MODE 0x00
 #define MOVE_TO_ORIGIN_MODE 0x1F
@@ -111,6 +109,7 @@
 #define CONTROL_MODE 0x6F
 #define COLLECT_DATA_MODE 0xFF
 
+#define BRAKE_COMMAND 0x7FF
 
 // Calculation constants
 #define FULL_BRIDGE_RECTIFIER_DIODE_VOLTAGE_DROP 0.7
@@ -118,9 +117,9 @@
 
 
 // PID constants
-#define TROLLEY_MOTOR_KP 0.03
-#define TROLLEY_MOTOR_KI 0.3
-#define TROLLEY_MOTOR_KD 0.00001
+#define TROLLEY_MOTOR_KP 0.044
+#define TROLLEY_MOTOR_KI 0.1
+#define TROLLEY_MOTOR_KD 0.001
 #define TROLLEY_MOTOR_MAX_INTEGRAL 1000
 
 #endif

@@ -56,10 +56,10 @@ std_msgs__msg__Float32 positionMessage;
 rclc_executor_t positionPubExecutor;
 rcl_timer_t positionPubTimer;
 
-// motor PWM subscribers and executors
-rcl_subscription_t motorPWMSubscriber;
-std_msgs__msg__UInt32 motorPWMMessage;
-rclc_executor_t motorPWMExecutor;
+// controller command subscribers and executors
+rcl_subscription_t controllerCommandSubscriber;
+std_msgs__msg__UInt32 controllerCommandMessage;
+rclc_executor_t controllerCommandExecutor;
 
 // Trolley Motor Voltage Publisher
 rcl_publisher_t trolleyMotorVoltagePublisher;
@@ -73,18 +73,18 @@ std_msgs__msg__Float32 hoistMotorVoltageMessage;
 rclc_executor_t hoistMotorVoltageExecutor;
 rcl_timer_t hoistMotorVoltagePubTimer;
 
+void microROSInit();
+
 // Error handle loop
 void error_loop()
 {
-  while (1)
-  {
-    ledBuiltIn.blink(1000);
-  }
+  ledBuiltIn.turnOn();
+  microROSInit();
 }
 
 void publishLimitSwitchState(rcl_timer_t *timer, int64_t last_call_time)
 {
-  (void)last_call_time;
+  RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
     if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
@@ -108,23 +108,50 @@ void publishLimitSwitchState(rcl_timer_t *timer, int64_t last_call_time)
   }
 }
 
+float trolleyPosition = 0;
 void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
-  (void)last_call_time;
+  RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float position = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
-    // float position = static_cast<float>(encoderTrolley.getPulse());
-    positionMessage.data = position;
+    // trolleyPosition = static_cast<float>(encoderTrolley.getPulse());
+    positionMessage.data = trolleyPosition;
     RCSOFTCHECK(rcl_publish(&positionPublisher, &positionMessage, NULL));
   }
 }
 
-// Subscriber callback function for trolley motor PWM
-void motorPWMCallback(const void *msgin)
+bool brakeTrolleyMotor = false;
+bool brakeHoistMotor = false;
+void controllerCommandHandler();
+void controllerCommandCallback(const void *msgin)
 {
-  const std_msgs__msg__UInt32 *motorPWMMessage = (const std_msgs__msg__UInt32 *)msgin;
-  unpackValues(motorPWMMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
+  const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
+  unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
+  controllerCommandHandler();
+}
+
+void controllerCommandHandler()
+{
+  if (trolleyMotorPWM == BRAKE_COMMAND)
+  {
+    trolleyMotorPWM = 0;
+    brakeTrolleyMotor = true;
+  }
+  else
+  {
+    brakeTrolleyMotor = false;
+  }
+
+  if (hoistMotorPWM == BRAKE_COMMAND)
+  {
+    hoistMotorPWM = 0;
+    brakeHoistMotor = true;
+  }
+  else
+  {
+    brakeHoistMotor = false;
+  }
+
   if (limitSwitchEncoderSideState && trolleyMotorPWM < 0)
   {
     trolleyMotorPWM = 0;
@@ -137,26 +164,130 @@ void motorPWMCallback(const void *msgin)
 
 void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
-  (void)last_call_time;
+  RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
-    trolleyMotorVoltageMessage.data = findMultimeterValue(trolleyMotorVoltageMovingAverage.getMovingAverage());
+    float trolleyMotorVoltage = trolleyMotorVoltageMovingAverage.getMovingAverage();
+    if (trolleyMotorPWM < 0)
+    {
+      trolleyMotorVoltage = -trolleyMotorVoltage;
+    }
+    trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
   }
 }
 
-unsigned long last_time = 0;
-float last_current = 0;
 void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
-  (void)last_call_time;
+  RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
-    hoistMotorVoltageMessage.data = hoistMotorVoltageMovingAverage.getMovingAverage();
+    float hoistMotorVoltage = hoistMotorVoltageMovingAverage.getMovingAverage();
+    if (hoistMotorPWM < 0)
+    {
+      hoistMotorVoltage = -hoistMotorVoltage;
+    }
+    hoistMotorVoltageMessage.data = hoistMotorVoltage;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
   }
+}
+
+void initTrolleyPositionPublisher()
+{
+  // trolley position publisher init
+  RCCHECK(rclc_publisher_init_default(
+      &positionPublisher,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+      TROLLEY_POSITION_TOPIC_NAME));
+
+  // trolley position timer init
+  RCCHECK(rclc_timer_init_default(
+      &positionPubTimer,
+      &support,
+      RCL_MS_TO_NS(POSITION_PUBLISH_PERIOD_MS),
+      trolleyPositionPubTimerCallback));
+
+  // trolley position executor init
+  RCCHECK(rclc_executor_init(&positionPubExecutor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_add_timer(&positionPubExecutor, &positionPubTimer));
+}
+
+void initMotorPWMSubscriber()
+{
+  // motor PWM subscriber init
+  RCCHECK(rclc_subscription_init_default(
+      &controllerCommandSubscriber,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
+      MOTOR_PWM_TOPIC_NAME));
+
+  // motor PWM executor init
+  RCCHECK(rclc_executor_init(&controllerCommandExecutor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_add_subscription(&controllerCommandExecutor, &controllerCommandSubscriber, &controllerCommandMessage, &controllerCommandCallback, ON_NEW_DATA));
+}
+
+void initTrolleyMotorVoltagePublisher()
+{
+  // trolley motor voltage publisher init
+  RCCHECK(rclc_publisher_init_default(
+      &trolleyMotorVoltagePublisher,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+      TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME));
+
+  // trolley motor voltage timer init
+  RCCHECK(rclc_timer_init_default(
+      &trolleyMotorVoltagePubTimer,
+      &support,
+      RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS),
+      trolleyMotorVoltagePubTimerCallback));
+
+  // trolley motor voltage executor init
+  RCCHECK(rclc_executor_init(&trolleyMotorVoltageExecutor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_add_timer(&trolleyMotorVoltageExecutor, &trolleyMotorVoltagePubTimer));
+}
+
+void initHoistMotorVoltagePublisher()
+{
+  // hoist motor voltage publisher init
+  RCCHECK(rclc_publisher_init_default(
+      &hoistMotorVoltagePublisher,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+      HOIST_MOTOR_VOLTAGE_TOPIC_NAME));
+
+  // hoist motor voltage timer init
+  RCCHECK(rclc_timer_init_default(
+      &hoistMotorVoltagePubTimer,
+      &support,
+      RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS),
+      hoistMotorVoltagePubTimerCallback));
+
+  // hoist motor voltage publisher
+  RCCHECK(rclc_executor_init(&hoistMotorVoltageExecutor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_add_timer(&hoistMotorVoltageExecutor, &hoistMotorVoltagePubTimer));
+}
+
+void initLimitSwitchPublisher()
+{
+  // limit switches publisher init
+  RCCHECK(rclc_publisher_init_default(
+      &limitSwitchPublisher,
+      &microcontrollerGantryNode,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
+      LIMIT_SWITCH_TOPIC_NAME));
+
+  // limit switch timer init
+  RCCHECK(rclc_timer_init_default(
+      &limitSwitchPubTimer,
+      &support,
+      RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
+      publishLimitSwitchState));
+
+  // limit switch executor init
+  RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
 }
 
 void microROSInit()
@@ -173,91 +304,20 @@ void microROSInit()
   // create node
   RCCHECK(rclc_node_init_default(&microcontrollerGantryNode, NODE_NAME, "", &support));
 
-  // create limit switches publisher
-  // RCCHECK(rclc_publisher_init_default(
-  //     &limitSwitchPublisher,
-  //     &microcontrollerGantryNode,
-  //     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
-  //     LIMIT_SWITCH_TOPIC_NAME));
+  // init motor PWM subscriber
+  initMotorPWMSubscriber();
 
-  // create trolley position publisher
-  RCCHECK(rclc_publisher_init_default(
-      &positionPublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-      TROLLEY_POSITION_TOPIC_NAME));
+  // init trolley position publisher
+  initTrolleyPositionPublisher();
 
-  // create trolley motor voltage publisher
-  RCCHECK(rclc_publisher_init_default(
-      &trolleyMotorVoltagePublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-      TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME));
+  // init trolley motor voltage publisher
+  initTrolleyMotorVoltagePublisher();
 
-  // create hoist motor voltage publisher
-  RCCHECK(rclc_publisher_init_default(
-      &hoistMotorVoltagePublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-      HOIST_MOTOR_VOLTAGE_TOPIC_NAME));
+  // init hoist motor voltage publisher
+  initHoistMotorVoltagePublisher();
 
-  // create timer
-  // limit switch publisher
-  // RCCHECK(rclc_timer_init_default(
-  //     &limitSwitchPubTimer,
-  //     &support,
-  //     RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
-  //     publishLimitSwitchState));
-
-  // trolley position publisher
-  RCCHECK(rclc_timer_init_default(
-      &positionPubTimer,
-      &support,
-      RCL_MS_TO_NS(POSITION_PUBLISH_PERIOD_MS),
-      trolleyPositionPubTimerCallback));
-
-  // trolley motor voltage publisher
-  RCCHECK(rclc_timer_init_default(
-      &trolleyMotorVoltagePubTimer,
-      &support,
-      RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS),
-      trolleyMotorVoltagePubTimerCallback));
-
-  // hoist motor voltage publisher
-  RCCHECK(rclc_timer_init_default(
-      &hoistMotorVoltagePubTimer,
-      &support,
-      RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS),
-      hoistMotorVoltagePubTimerCallback));
-
-  // create subscriber
-  // motor PWM subscriber
-  RCCHECK(rclc_subscription_init_default(
-      &motorPWMSubscriber,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
-      MOTOR_PWM_TOPIC_NAME));
-
-  // create executor
-  // limit switch publisher
-  // RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
-  // RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
-
-  // trolley position publisher
-  RCCHECK(rclc_executor_init(&positionPubExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&positionPubExecutor, &positionPubTimer));
-
-  // trolley motor voltage publisher
-  RCCHECK(rclc_executor_init(&trolleyMotorVoltageExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&trolleyMotorVoltageExecutor, &trolleyMotorVoltagePubTimer));
-
-  // hoist motor voltage publisher
-  RCCHECK(rclc_executor_init(&hoistMotorVoltageExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&hoistMotorVoltageExecutor, &hoistMotorVoltagePubTimer));
-
-  // motor PWM subscriber
-  RCCHECK(rclc_executor_init(&motorPWMExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_subscription(&motorPWMExecutor, &motorPWMSubscriber, &motorPWMMessage, &motorPWMCallback, ON_NEW_DATA));
+  // init limit switch publisher
+  // initLimitSwitchPublisher();
 }
 
 #endif // MICRO_ROS_HPP

@@ -62,7 +62,7 @@ void checkLimitSwitch()
   }
 
   // Protect system at high speed by reducing PWM by half
-  if ((encoderTrolley.getPulse() > 0.8 * ENCODER_MAX_VALUE) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
+  if ((encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
   {
     trolleyMotorPWM /= 4;
   }

@@ -26,10 +26,14 @@ MOVE_TO_END_MODE = 0x3F
 LOCK_CONTAINER_MODE = 0x4F
 UNLOCK_CONTAINER_MODE = 0x5F
 COLLECT_DATA_MODE = 0xFF
+CONTROL_MODE = 0x6F
 
 DESIRED_TROLLEY_POSITION = 1.0
 DESIRED_CABLE_LENGTH = 0.5
 
+MAX_PWM = 1023
+
+BRAKE_COMMAND = 0x7FF
 
 GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/gantry_crane_parameters.json"
 
@@ -135,7 +139,7 @@ class GantryCraneSystem(Node):
     def process_message(self, variable_name, message):
         timestamp = time.time()
         delta_time = timestamp - self.last_variables_message_timestamp[variable_name]
-        
+
         if variable_name == "trolley_position":
             value = round(message.data, 5)
 
@@ -453,8 +457,6 @@ class Controller(Node):
 
     def packValues(self, mode, pwm_trolley, pwm_hoist):
         # Ensure the values are within the specified ranges
-        pwm_trolley = max(min(pwm_trolley, 255), -255)
-        pwm_hoist = max(min(pwm_hoist, 255), -255)
         mode = max(min(mode, 255), 0)
 
         # Convert negative values to two's complement representation
@@ -534,7 +536,11 @@ class Controller(Node):
         # if stateVector[0, 0] == 0.0 or stateVector[1, 0] == 0.0:
         #     return 0, 0
 
-        print("Desired state vector: {}, State vector: {}".format(desiredStateVector, stateVector))
+        print(
+            "Desired state vector: {}, State vector: {}".format(
+                desiredStateVector, stateVector
+            )
+        )
 
         stateVectorFirstDerivative = np.matrix(
             [
@@ -549,7 +555,11 @@ class Controller(Node):
                 [gantry_crane.variables_second_derivative["cable_length"]],
             ]
         )
-        print("State vector first derivative: {}, State vector second derivative: {}".format(stateVectorFirstDerivative, stateVectorSecondDerivative))
+        print(
+            "State vector first derivative: {}, State vector second derivative: {}".format(
+                stateVectorFirstDerivative, stateVectorSecondDerivative
+            )
+        )
 
         # Sliding surface
         # slidingSurface = np.matrix([[0.0], [0.0]])
@@ -570,36 +580,36 @@ class Controller(Node):
 
         control_now = np.matrix([[0.0], [0.0]])
         control_now = (
-            # np.matmul(
-            #     (
-            #         gantry_crane.matrix_B
-            #         - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
-            #     ),
-            #     stateVectorSecondDerivative,
-            # )
-            # + np.matmul(
-            #     (
-            #         gantry_crane.matrix_C
-            #         - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
-            #     ),
-            #     stateVectorFirstDerivative,
-            # )
-            + gantry_crane.matrix_D
+            np.matmul(
+                (
+                    gantry_crane.matrix_B
+                    - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
+                ),
+                stateVectorSecondDerivative,
+            )
+            + np.matmul(
+                (
+                    gantry_crane.matrix_C
+                    - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
+                ),
+                stateVectorFirstDerivative,
+            )
+            +gantry_crane.matrix_D
             * gantry_crane.variables_second_derivative["sway_angle"]
-            # + (
-            #     gantry_crane.matrix_E
-            #     - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
-            # )
-            # * gantry_crane.variables_first_derivative["sway_angle"]
-            # + gantry_crane.matrix_F
+            + (
+                gantry_crane.matrix_E
+                - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
+            )
+            * gantry_crane.variables_first_derivative["sway_angle"]
+            + gantry_crane.matrix_F
         )
-        time.sleep(0.1)
+        # time.sleep(0.1)
 
-        # multiplier = np.array([[1.0], [1.0]])
+        multiplier = np.array([[1.0], [1.0]])
         # Simplified control
-        # control_now = control_now -np.multiply(
-        #     self.k, np.tanh(np.multiply(multiplier, slidingSurface))
-        # )
+        control_now = control_now -np.multiply(
+            self.k, np.tanh(np.multiply(multiplier, slidingSurface))
+        )
 
         # print(
         #     np.matmul(
@@ -649,10 +659,10 @@ class Controller(Node):
         print("Control now: ", control_now)
 
         control_input1 = int(
-            self.linear_interpolation(control_now[0, 0], -12.0, -255, 12, 255)
+            self.linear_interpolation(control_now[0, 0], -12.0, -MAX_PWM, 12, MAX_PWM)
         )
         control_input2 = int(
-            self.linear_interpolation(control_now[1, 0], -12.0, -255, 12, 255)
+            self.linear_interpolation(control_now[1, 0], -12.0, -MAX_PWM, 12, MAX_PWM)
         )
 
         # time.sleep(0.2)
@@ -665,27 +675,24 @@ class Controller(Node):
         # s_cable_length = gantry_crane.variables_value["cable_length"] - desired_cable_length
 
         # control_input1 = - 120 * np.tanh(s_trolley_position)
-        if gantry_crane.variables_value["trolley_position"] < 1.0:
-            control_input1 = 80
-            control_input2 = 0
-        else:
-            control_input1 = 0
-            control_input2 = 0
+
+        control_input1 = 550
+        control_input2 = 0
 
         # time.sleep(1)
 
-        if control_input1 > 255:
-            control_input1 = 255
-        elif control_input1 < -255:
-            control_input1 = -255
+        if control_input1 > MAX_PWM:
+            control_input1 = MAX_PWM
+        elif control_input1 < -MAX_PWM:
+            control_input1 = -MAX_PWM
 
-        if control_input2 > 255:
-            control_input2 = 255
-        elif control_input2 < -255:
-            control_input2 = -255
+        if control_input2 > MAX_PWM:
+            control_input2 = MAX_PWM
+        elif control_input2 < -MAX_PWM:
+            control_input2 = -MAX_PWM
 
-        # print("Control input 1: ", control_input1)
-        # print("Control input 2: ", control_input2)
+        print("Control input 1: ", control_input1)
+        print("Control input 2: ", control_input2)
 
         return int(control_input1), int(control_input2)
 
@@ -694,8 +701,10 @@ if __name__ == "__main__":
     rclpy.init()
     gantry_crane = GantryCraneSystem()
     slidingModeController = Controller()
+    start_time = time.time()
     try:
         while 1:
+            time_now = time.time() - start_time
             # Update matrices
             gantry_crane.update_matrices()
             (
@@ -705,19 +714,22 @@ if __name__ == "__main__":
                 gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
             )
 
-            # gantryMode = COLLECT_DATA_MODE
-            # slidingModeController.publish_motor_pwm(
-            #     gantryMode, trolley_motor_pwm, hoist_motor_pwm
-            # )
-
-            gantryMode = MOVE_TO_MIDDLE_MODE
+            gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(
-                gantryMode, 0.0, 0.0
+                gantryMode, trolley_motor_pwm, hoist_motor_pwm
             )
-            
 
-            rclpy.spin_once(gantry_crane, timeout_sec=0.02)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.02)
+            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
+            rclpy.spin_once(slidingModeController, timeout_sec=0.01)
+
+            if time_now > 5:
+                break
+
+        for i in range(10):
+            gantryMode = CONTROL_MODE
+            slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
+            rclpy.spin_once(slidingModeController, timeout_sec=0.01)
+            time.sleep(0.05)
 
     except KeyboardInterrupt:
         pass

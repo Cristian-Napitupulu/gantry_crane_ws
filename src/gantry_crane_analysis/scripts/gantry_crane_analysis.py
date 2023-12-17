@@ -27,7 +27,6 @@ LOCK_CONTAINER_MODE = 0x4F
 UNLOCK_CONTAINER_MODE = 0x5F
 COLLECT_DATA_MODE = 0xFF
 
-
 class GantryCraneAnalysis(Node):
     def __init__(self):
         super().__init__("gantry_crane_analysis")
@@ -70,6 +69,7 @@ class GantryCraneAnalysis(Node):
         self.subscribers["hoist_motor_voltage"] = self.create_subscription(
             Float32,
             HOIST_MOTOR_VOLTAGE_TOPIC_NAME,
+            
             self.hoist_motor_voltage_callback,
             10,
         )
@@ -265,7 +265,7 @@ class GantryCraneAnalysis(Node):
             (mode & 0xFF) | ((pwm_trolley & 0xFFF) << 8) | ((pwm_hoist & 0xFFF) << 20)
         )
         return packed_value
-    
+
     def publish_pwm(self, mode, pwm_trolley, pwm_hoist):
         message = UInt32()
         message.data = self.packValues(mode, pwm_trolley, pwm_hoist)

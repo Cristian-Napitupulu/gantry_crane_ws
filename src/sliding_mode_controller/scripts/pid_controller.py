@@ -6,13 +6,14 @@ from std_msgs.msg import Float32
 from std_msgs.msg import UInt32
 
 import numpy as np
+import json
 import time
 
 from control import *
 from control.matlab import *
 from control.matlab import tf as trf
 
-import cv2
+import pandas as pd
 
 
 GANTRY_CRANE_NODE_NAME = "gantry_crane_control_system"
@@ -39,8 +40,6 @@ DESIRED_CABLE_LENGTH = 0.5
 
 MAX_PWM = 1023
 
-BRAKE_COMMAND = 0x7FF
-
 
 class GantryCraneSystem(Node):
     def __init__(self):
@@ -53,13 +52,13 @@ class GantryCraneSystem(Node):
     def initialize_subscribers(self):
         # Initialize subscriber
         self.subscribers["trolley_position"] = self.create_subscription(
-            Float32, TROLLEY_POSITION_TOPIC_NAME, self.trolley_position_callback, 5
+            Float32, TROLLEY_POSITION_TOPIC_NAME, self.trolley_position_callback, 10
         )
         self.subscribers["cable_length"] = self.create_subscription(
-            Float32, CABLE_LENGTH_TOPIC_NAME, self.cable_length_callback, 5
+            Float32, CABLE_LENGTH_TOPIC_NAME, self.cable_length_callback, 10
         )
         self.subscribers["sway_angle"] = self.create_subscription(
-            Float32, SWAY_ANGLE_TOPIC_NAME, self.sway_angle_callback, 5
+            Float32, SWAY_ANGLE_TOPIC_NAME, self.sway_angle_callback, 10
         )
 
     def initialize_variables(self):
@@ -222,6 +221,8 @@ class Controller(Node):
 
     def packValues(self, mode, pwm_trolley, pwm_hoist):
         # Ensure the values are within the specified ranges
+        pwm_trolley = max(min(pwm_trolley, MAX_PWM), -MAX_PWM)
+        pwm_hoist = max(min(pwm_hoist, MAX_PWM), -MAX_PWM)
         mode = max(min(mode, 255), 0)
 
         # Convert negative values to two's complement representation
@@ -254,11 +255,10 @@ class Controller(Node):
         Kdtet = 3.57
 
         x = gantry_crane.variables_value["trolley_position"]
-        print("x: ", x)
         l = gantry_crane.variables_value["cable_length"]
         tetha = gantry_crane.variables_value["sway_angle"]
         xref_t = x_ref[np.argmin(np.abs(t - tnow))]
-        # print("xref_t: ", xref_t)
+        print("xref_t: ", xref_t)
         ex = xref_t - x
         etet = tetha
         dex = gantry_crane.variables_first_derivative["trolley_position"] / 1000
@@ -274,7 +274,7 @@ class Controller(Node):
         # Control Signal Sway
         CS2 = Kptet * etet + Kitet * self.tetIntErr + Kdtet * detet
         control_now = CS1 + CS2
-        # print("Control now: ", control_now)
+        print("Control now: ", control_now)
         """
         control_input1 = int(
             self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
@@ -292,10 +292,9 @@ class Controller(Node):
         elif control_input1 < -MAX_PWM:
             control_input1 = -MAX_PWM
 
+        # control_input1 = 0
         control_input2 = 0
-
-        control_input1 = 635
-        print("Control input 2: ", control_input2)
+        print("Control input 1: ", control_input1)
 
         self.listtimenow.append(time.time() - self.inittime)
         self.listCS1.append(control_now)
@@ -307,6 +306,70 @@ class Controller(Node):
 
         return int(control_input1), int(control_input2)
 
+    def get_lyapunov_control_input(self, gantry_crane, x_ref, l_ref):
+        Kpx = 7.36  # 9.89
+        Kdx = 9.00  # 2.87
+        Kpl = 14.18  # 10
+        Kdl = 8.98  # 3.13
+
+        x = gantry_crane.variables_value["trolley_position"]
+        l = gantry_crane.variables_value["cable_length"]
+        tetha = gantry_crane.variables_value["sway_angle"]
+
+        ex = x - x_ref
+        etet = tetha
+        el = l - l_ref
+
+        dex = gantry_crane.variables_first_derivative["trolley_position"] / 1000
+        detet = gantry_crane.variables_first_derivative["sway_angle"] / 1000
+        dell = gantry_crane.variables_first_derivative["cable_length"] / 1000
+
+        # Control Signal Pos
+        CS1 = -Kpx * ex - Kdx * dex
+        # Control Signal CLength
+        CS2 = -Kpl * el - Kdl * dell
+
+        print(f"Control_X: {CS1}, Control_L={CS2}")
+        """
+        control_input1 = int(
+            self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
+        )
+        """
+        if CS1 > 0:
+            control_input1 = int(self.linear_interpolation(CS1, 0, 600, 5, 700))
+        elif CS1<0:
+            control_input1 = -1 * (int(self.linear_interpolation(-CS1, 0, 600, 5, 700)))
+        else:
+            control_input1=0
+
+        if CS2 > 0:
+            control_input2 = int(self.linear_interpolation(CS2, 0, 250, 5, 500))
+        else:
+            control_input2 = -1 * (int(self.linear_interpolation(-CS2, 0, 250, 5, 500)))
+
+        if control_input1 > MAX_PWM:
+            control_input1 = MAX_PWM
+        elif control_input1 < -MAX_PWM:
+            control_input1 = -MAX_PWM
+
+        if control_input2 > MAX_PWM:
+            control_input2 = MAX_PWM
+        elif control_input2 < -MAX_PWM:
+            control_input2 = -MAX_PWM
+
+        # control_input1 = 0
+        # control_input2=0
+        print(f"Control input 1: {control_input1}, Control input 2: {control_input2}")
+
+        self.listtimenow.append(time.time() - self.inittime)
+        self.listCS1.append(CS1)
+        self.listCS2.append(CS2)
+        self.listPWM_pos.append(control_input1)
+        self.listPWM_length.append(control_input2)
+        self.listxref.append(x_ref)
+        self.listlref.append(l_ref)
+        return int(control_input1), int(control_input2)
+
 
 def x_reference():
     # x_ref model 3th order ITAE
@@ -315,7 +378,7 @@ def x_reference():
     Ts = 3.5
     w = 4 / (damp_rat * Ts)
     num = w**3
-    den = [1, 1.75 * w, 2.15 * w * 2, 1.5 * w * 3]
+    den = [1, 1.75 * w, 2.15 * w**2, 1.5 * w**3]
 
     x_ref_tf = trf(num, den)
 
@@ -339,11 +402,21 @@ if __name__ == "__main__":
             # PID Robust
             timestamp1 = time.time()
             tnow = timestamp1 - timestamp0
+            # (
+            #     trolley_motor_pwm,
+            #     hoist_motor_pwm,
+            # ) = slidingModeController.get_PID_control_input(
+            #     gantry_crane, x_ref, t,tnow
+            # )
+
+            # Lyapunov Control Action
+            x_ref = 1
+            l_ref = 0.5
             (
                 trolley_motor_pwm,
                 hoist_motor_pwm,
-            ) = slidingModeController.get_PID_control_input(
-                gantry_crane, x_ref, t, tnow
+            ) = slidingModeController.get_lyapunov_control_input(
+                gantry_crane, x_ref, l_ref
             )
 
             gantryMode = CONTROL_MODE
@@ -351,16 +424,67 @@ if __name__ == "__main__":
                 gantryMode, trolley_motor_pwm, hoist_motor_pwm
             )
 
-            rclpy.spin_once(gantry_crane, timeout_sec=0.001)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.001)
+            rclpy.spin_once(gantry_crane, timeout_sec=0.02)
+            rclpy.spin_once(slidingModeController, timeout_sec=0.02)
 
-            if tnow > 10:
+            if tnow > 30:
                 break
 
-            key = cv2.waitKey(1)
+        datapos = pd.DataFrame(
+            {
+                "timestamp": gantry_crane.list_time_value["trolley_position"],
+                "trolley_position": gantry_crane.list_variables_value[
+                    "trolley_position"
+                ],
+                "trolley_velocity": gantry_crane.list_dvariables_value[
+                    "trolley_position"
+                ],
+                "trolley_acceleration": gantry_crane.list_d2variables_value[
+                    "trolley_position"
+                ],
+            }
+        )
+        datalcab = pd.DataFrame(
+            {
+                "timestamp": gantry_crane.list_time_value["cable_length"],
+                "cable_length": gantry_crane.list_variables_value["cable_length"],
+                "cable_velocity": gantry_crane.list_dvariables_value["cable_length"],
+                "cable_acceleration": gantry_crane.list_d2variables_value[
+                    "cable_length"
+                ],
+            }
+        )
+        datasway = pd.DataFrame(
+            {
+                "timestamp": gantry_crane.list_time_value["sway_angle"],
+                "sway_angle": gantry_crane.list_variables_value["sway_angle"],
+                "sway_velocity": gantry_crane.list_dvariables_value["sway_angle"],
+                "sway_acceleration": gantry_crane.list_d2variables_value["sway_angle"],
+            }
+        )
 
-            if key == 27:
-                break
+        datapos.to_excel(pengontrol + "position.xlsx", sheet_name="trolley_position")
+        datalcab.to_excel(pengontrol + "cable_length.xlsx", sheet_name="cable_length")
+        datasway.to_excel(pengontrol + "sway_angle.xlsx", sheet_name="sway_angle")
+
+        timesig = slidingModeController.listtimenow
+        Cpos = slidingModeController.listCS1
+        Clen = slidingModeController.listCS2
+        CPWM_pos = slidingModeController.listPWM_pos
+        CPWM_length = slidingModeController.listPWM_length
+        dataxref = slidingModeController.listxref
+        datalref = slidingModeController.listlref
+        datacontrol = {
+            "timesig": timesig,
+            "Cpos": Cpos,
+            "Clen": Clen,
+            "CPWM_pos": CPWM_pos,
+            "CPWM_length": CPWM_length,
+            "dataxref": dataxref,
+            "datalref": datalref,
+        }
+        datacontrol = pd.DataFrame(datacontrol)
+        datacontrol.to_excel(pengontrol + "control.xlsx", sheet_name="datacontrol")
 
         for i in range(20):
             gantryMode = IDLE_MODE
@@ -368,13 +492,7 @@ if __name__ == "__main__":
             rclpy.spin_once(slidingModeController, timeout_sec=0.001)
             time.sleep(0.05)
 
-    except KeyboardInterrupt or rclpy._rclpy_pybind11.RCLError:
-        for i in range(20):
-            print("Stop")
-            gantryMode = IDLE_MODE
-            slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.001)
-            time.sleep(0.05)
-        print("Exiting")
+    except KeyboardInterrupt:
+        pass
 
     rclpy.shutdown()

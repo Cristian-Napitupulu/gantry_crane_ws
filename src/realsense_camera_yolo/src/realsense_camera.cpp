@@ -313,7 +313,14 @@ void RealSenseCamera::printParameters()
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<RealSenseCamera>());
+    try
+    {
+        rclcpp::spin(std::make_shared<RealSenseCamera>());
+    }
+    catch (const rs2::error &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
     rclcpp::shutdown();
     return 0;
 }

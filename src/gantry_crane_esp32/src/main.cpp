@@ -80,23 +80,9 @@ void controllerCommandTask(void *parameter)
 
     checkLimitSwitch();
 
-    if (brakeTrolleyMotor)
-    {
-      trolleyMotor.brake();
-    }
-    else
-    {
-      trolleyMotor.setPWM(trolleyMotorPWM);
-    }
+    trolleyMotor.setPWM(trolleyMotorPWM);
 
-    if (brakeHoistMotor)
-    {
-      hoistMotor.brake();
-    }
-    else
-    {
-      hoistMotor.setPWM(hoistMotorPWM);
-    }
+    hoistMotor.setPWM(hoistMotorPWM);
 
     trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
 

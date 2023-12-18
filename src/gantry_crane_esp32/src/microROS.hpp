@@ -167,7 +167,7 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float trolleyMotorVoltage = trolleyMotorVoltageMovingAverage.getMovingAverage();
+    float trolleyMotorVoltage = trolleyMotorVoltageMovingAverage.getMovingAverage() * 3.1694367498;
     if (trolleyMotorPWM < 0)
     {
       trolleyMotorVoltage = -trolleyMotorVoltage;
@@ -182,7 +182,7 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float hoistMotorVoltage = hoistMotorVoltageMovingAverage.getMovingAverage();
+    float hoistMotorVoltage = hoistMotorVoltageMovingAverage.getMovingAverage() * 3.179049377;
     if (hoistMotorPWM < 0)
     {
       hoistMotorVoltage = -hoistMotorVoltage;

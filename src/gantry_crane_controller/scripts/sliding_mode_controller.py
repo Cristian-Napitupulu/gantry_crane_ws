@@ -11,6 +11,9 @@ import time
 
 import pandas as pd
 
+import signal
+
+
 GANTRY_CRANE_NODE_NAME = "gantry_crane_control_system"
 CONTROLLER_NODE_NAME = "sliding_mode_controller"
 
@@ -45,8 +48,10 @@ GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_w
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/scripts/sliding_mode_controller_parameters.json"
 
 DATA_SAVE_PATH = (
-    "/home/icodes/Documents/gantry_crane_ws/src/sliding_mode_controller/data/"
+    "/home/icodes/Documents/gantry_crane_ws/src/gantry_parameter_optimization/data/"
 )
+
+COLLECTING_DATA = [False]
 
 
 # Create a class for moving average filter
@@ -82,7 +87,7 @@ class GantryCraneSystem(Node):
 
         self.initialize_variables()
 
-        self.update_matrices()
+        print("Gantry crane system initialized.")
 
     def initialize_subscribers(self):
         # Initialize subscriber
@@ -108,14 +113,44 @@ class GantryCraneSystem(Node):
             10,
         )
 
-    def initialize_variables(self):
-        # Initialize variables
+    def reset(self):
         self.variables_value = {
             "trolley_position": 0.0,
             "cable_length": 0.0,
             "sway_angle": 0.0,
             "trolley_motor_voltage": 0.0,
             "hoist_motor_voltage": 0.0,
+        }
+
+        self.data_collection_buffer = {
+            "timestamp": [],
+            "trolley_control_input": [],
+            "trolley_control_pwm": [],
+            "hoist_control_input": [],
+            "hoist_control_pwm": [],
+            "trolley_motor_voltage": [],
+            "hoist_motor_voltage": [],
+            "trolley_position_third_derivative": [],
+            "cable_length_third_derivative": [],
+            "trolley_position_second_derivative": [],
+            "cable_length_second_derivative": [],
+            "trolley_position_first_derivative": [],
+            "cable_length_first_derivative": [],
+            "trolley_position": [],
+            "cable_length": [],
+            "sway_angle_second_derivative": [],
+            "sway_angle_first_derivative": [],
+            "sway_angle": [],
+        }
+
+    def initialize_variables(self):
+        # Initialize variables
+        self.variables_value = {
+            "trolley_position": None,
+            "cable_length": None,
+            "sway_angle": None,
+            "trolley_motor_voltage": None,
+            "hoist_motor_voltage": None,
         }
 
         self.last_variables_value = {
@@ -150,6 +185,22 @@ class GantryCraneSystem(Node):
             "hoist_motor_voltage": 0.0,
         }
 
+        self.last_variables_second_derivative = {
+            "trolley_position": 0.0,
+            "cable_length": 0.0,
+            "sway_angle": 0.0,
+            "trolley_motor_voltage": 0.0,
+            "hoist_motor_voltage": 0.0,
+        }
+
+        self.variables_third_derivative = {
+            "trolley_position": 0.0,
+            "cable_length": 0.0,
+            "sway_angle": 0.0,
+            "trolley_motor_voltage": 0.0,
+            "hoist_motor_voltage": 0.0,
+        }
+
         self.matrix_A = np.matrix([[0.0, 0.0], [0.0, 0.0]])
         self.matrix_B = np.matrix([[0.0, 0.0], [0.0, 0.0]])
         self.matrix_C = np.matrix([[0.0, 0.0], [0.0, 0.0]])
@@ -163,25 +214,6 @@ class GantryCraneSystem(Node):
             "sway_angle": time.time(),
             "trolley_motor_voltage": time.time(),
             "hoist_motor_voltage": time.time(),
-        }
-
-        self.data_collection_buffer = {
-            "timestamp": [],
-            "trolley_control_input": [],
-            "trolley_control_pwm": [],
-            "hoist_control_input": [],
-            "hoist_control_pwm": [],
-            "trolley_motor_voltage": [],
-            "hoist_motor_voltage": [],
-            "trolley_position_second_derivative": [],
-            "cable_length_second_derivative": [],
-            "trolley_position_first_derivative": [],
-            "cable_length_first_derivative": [],
-            "trolley_position": [],
-            "cable_length": [],
-            "sway_angle_second_derivative": [],
-            "sway_angle_first_derivative": [],
-            "sway_angle": [],
         }
 
     def process_message(self, variable_name, message):
@@ -213,10 +245,20 @@ class GantryCraneSystem(Node):
             delta_time,
         )
 
+        self.variables_third_derivative[variable_name] = self.calculate_derivative(
+            self.variables_second_derivative[variable_name],
+            self.last_variables_second_derivative[variable_name],
+            delta_time,
+        )
+
         self.last_variables_value[variable_name] = self.variables_value[variable_name]
         self.last_variables_first_derivative[
             variable_name
         ] = self.variables_first_derivative[variable_name]
+        self.last_variables_second_derivative[
+            variable_name
+        ] = self.variables_second_derivative[variable_name]
+
         self.last_variables_message_timestamp[variable_name] = time.time()
         return delta_time
 
@@ -612,11 +654,11 @@ class Controller(Node):
                 [gantry_crane.variables_second_derivative["cable_length"]],
             ]
         )
-        print(
-            "State vector first derivative: {}, State vector second derivative: {}".format(
-                stateVectorFirstDerivative, stateVectorSecondDerivative
-            )
-        )
+        # print(
+        #     "State vector first derivative: {}, State vector second derivative: {}".format(
+        #         stateVectorFirstDerivative, stateVectorSecondDerivative
+        #     )
+        # )
 
         # Sliding surface
         # slidingSurface = np.matrix([[0.0], [0.0]])
@@ -631,118 +673,154 @@ class Controller(Node):
         slidingSurface = (
             np.matmul(self.matrix_alpha, stateVector - desiredStateVector)
             + np.matmul(self.matrix_beta, stateVectorFirstDerivative)
-            + stateVectorSecondDerivative
+            # + stateVectorSecondDerivative
+            + self.matrix_lambda * gantry_crane.variables_value["sway_angle"]
         )
         # print("Sliding surface: ", slidingSurface)
 
         control_now = np.matrix([[0.0], [0.0]])
-        control_now = (
-            np.matmul(
-                (
-                    gantry_crane.matrix_B
-                    - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
-                ),
-                stateVectorSecondDerivative,
-            )
-            + np.matmul(
-                (
-                    gantry_crane.matrix_C
-                    - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
-                ),
-                stateVectorFirstDerivative,
-            )
-            + gantry_crane.matrix_D
-            * gantry_crane.variables_second_derivative["sway_angle"]
-            + (
-                gantry_crane.matrix_E
-                - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
-            )
-            * gantry_crane.variables_first_derivative["sway_angle"]
-            + gantry_crane.matrix_F
-        )
+        # control_now = (
+        #     np.matmul(
+        #         (
+        #             gantry_crane.matrix_B
+        #             - np.matmul(gantry_crane.matrix_A, self.matrix_beta)
+        #         ),
+        #         stateVectorSecondDerivative,
+        #     )
+        #     + np.matmul(
+        #         (
+        #             gantry_crane.matrix_C
+        #             - np.matmul(gantry_crane.matrix_A, self.matrix_alpha)
+        #         ),
+        #         stateVectorFirstDerivative,
+        #     )
+        #     + gantry_crane.matrix_D
+        #     * gantry_crane.variables_second_derivative["sway_angle"]
+        #     + (
+        #         gantry_crane.matrix_E
+        #         - np.matmul(gantry_crane.matrix_A, self.matrix_lambda)
+        #     )
+        #     * gantry_crane.variables_first_derivative["sway_angle"]
+        #     + gantry_crane.matrix_F
+        # )
 
-        multiplier = np.array([[1.0], [1.0]])
+        multiplier = np.array([[0.13], [1.0]])
         # Simplified control
-        control_now = control_now - np.multiply(
+        control_now = -np.multiply(
             self.k, np.tanh(np.multiply(multiplier, slidingSurface))
         )
 
-        # print("Control now: ", control_now)
+        print("Control now: ", control_now)
 
         control_input1 = control_now[0, 0]
         control_input2 = control_now[1, 0]
 
-        # print("Control input 1: ", control_input1)
-        # print("Control input 2: ", control_input2)
-
         return control_input1, control_input2
 
     def convert_to_pwm(self, voltage):
-        return int(self.linear_interpolation(voltage, -12.0, -MAX_PWM, 12, MAX_PWM))
+        FORWARD_DEADZONE_PWM = 575
+        REVERSE_DEADZONE_PWM = 575
+        if voltage > 0:
+            pwm = int(self.linear_interpolation(voltage, 0.0, FORWARD_DEADZONE_PWM, 12, MAX_PWM))
+        elif voltage < 0:
+            pwm = int(self.linear_interpolation(voltage, 0.0, -REVERSE_DEADZONE_PWM, -12, -MAX_PWM))
+        else:
+            pwm = 0
+        return pwm
 
 
 DURATION = 60.0
-MAX_VOLTAGE = 12.0
+MAX_VOLTAGE = 10.0
 
-def collect_data(gantry_crane, trolley_motor_control_input, hoist_motor_control_input, time_now, trolley_motor_pwm, hoist_motor_pwm):
+
+def collect_data(
+    gantry_crane,
+    trolley_motor_control_input,
+    hoist_motor_control_input,
+    time_now,
+    trolley_motor_pwm,
+    hoist_motor_pwm,
+):
     gantry_crane.data_collection_buffer["timestamp"].append(time_now)
     gantry_crane.data_collection_buffer["trolley_control_input"].append(
-                trolley_motor_control_input
-            )
-    gantry_crane.data_collection_buffer["trolley_control_pwm"].append(
-                trolley_motor_pwm
-            )
+        trolley_motor_control_input
+    )
+    gantry_crane.data_collection_buffer["trolley_control_pwm"].append(trolley_motor_pwm)
     gantry_crane.data_collection_buffer["hoist_control_input"].append(
-                hoist_motor_control_input
-            )
-    gantry_crane.data_collection_buffer["hoist_control_pwm"].append(
-                hoist_motor_pwm
-            )
+        hoist_motor_control_input
+    )
+    gantry_crane.data_collection_buffer["hoist_control_pwm"].append(hoist_motor_pwm)
     gantry_crane.data_collection_buffer["trolley_motor_voltage"].append(
-                gantry_crane.variables_value["trolley_motor_voltage"]
-            )
+        gantry_crane.variables_value["trolley_motor_voltage"]
+    )
     gantry_crane.data_collection_buffer["hoist_motor_voltage"].append(
-                gantry_crane.variables_value["hoist_motor_voltage"]
-            )
-    gantry_crane.data_collection_buffer[
-                "trolley_position_second_derivative"
-            ].append(gantry_crane.variables_second_derivative["trolley_position"])
-    gantry_crane.data_collection_buffer[
-                "cable_length_second_derivative"
-            ].append(gantry_crane.variables_second_derivative["cable_length"])
-    gantry_crane.data_collection_buffer[
-                "trolley_position_first_derivative"
-            ].append(gantry_crane.variables_first_derivative["trolley_position"])
+        gantry_crane.variables_value["hoist_motor_voltage"]
+    )
+    gantry_crane.data_collection_buffer["trolley_position_third_derivative"].append(
+        gantry_crane.variables_third_derivative["trolley_position"]
+    )
+    gantry_crane.data_collection_buffer["cable_length_third_derivative"].append(
+        gantry_crane.variables_third_derivative["cable_length"]
+    )
+    gantry_crane.data_collection_buffer["trolley_position_second_derivative"].append(
+        gantry_crane.variables_second_derivative["trolley_position"]
+    )
+    gantry_crane.data_collection_buffer["cable_length_second_derivative"].append(
+        gantry_crane.variables_second_derivative["cable_length"]
+    )
+    gantry_crane.data_collection_buffer["trolley_position_first_derivative"].append(
+        gantry_crane.variables_first_derivative["trolley_position"]
+    )
     gantry_crane.data_collection_buffer["cable_length_first_derivative"].append(
-                gantry_crane.variables_first_derivative["cable_length"]
-            )
+        gantry_crane.variables_first_derivative["cable_length"]
+    )
     gantry_crane.data_collection_buffer["trolley_position"].append(
-                gantry_crane.variables_value["trolley_position"]
-            )
+        gantry_crane.variables_value["trolley_position"]
+    )
     gantry_crane.data_collection_buffer["cable_length"].append(
-                gantry_crane.variables_value["cable_length"]
-            )
+        gantry_crane.variables_value["cable_length"]
+    )
     gantry_crane.data_collection_buffer["sway_angle_second_derivative"].append(
-                gantry_crane.variables_second_derivative["sway_angle"]
-            )
+        gantry_crane.variables_second_derivative["sway_angle"]
+    )
     gantry_crane.data_collection_buffer["sway_angle_first_derivative"].append(
-                gantry_crane.variables_first_derivative["sway_angle"]
-            )
+        gantry_crane.variables_first_derivative["sway_angle"]
+    )
     gantry_crane.data_collection_buffer["sway_angle"].append(
-                gantry_crane.variables_value["sway_angle"]
-            )
+        gantry_crane.variables_value["sway_angle"]
+    )
+
 
 if __name__ == "__main__":
     rclpy.init()
     gantry_crane = GantryCraneSystem()
     slidingModeController = Controller()
-    start_time = time.time()
-    trolley_motor_control_input = 0.0
-    hoist_motor_control_input = 0.0
+
     try:
-        while 1:
+        while True:
+            # print(gantry_crane.variables_value["trolley_position"])
+
+            if (
+                gantry_crane.variables_value["trolley_position"] is not None
+                and gantry_crane.variables_value["cable_length"] is not None
+            ):
+                data_incoming = True
+                print("Data incoming...")
+                gantry_crane.reset()
+                break
+            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
+
+        start_time = time.time()
+        while True:
+            if time.time() - start_time > 5:
+                break
+            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
+
+        trolley_motor_control_input = 0.0
+        hoist_motor_control_input = 0.0
+        start_time = time.time()
+        while True:
             time_now = time.time() - start_time
-            print("slide and hoist... Time now: ", time_now)
 
             # Update matrices
             gantry_crane.update_matrices()
@@ -750,19 +828,12 @@ if __name__ == "__main__":
             rclpy.spin_once(gantry_crane, timeout_sec=0.01)
 
             # # Get control input
-            # trolley_motor_control_input, hoist_motor_control_input = slidingModeController.get_control_input(
-            #     gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            # )
-
-            if gantry_crane.variables_value["trolley_position"] < 0.8:
-                trolley_motor_control_input += 0.005
-            else:
-                trolley_motor_control_input = 0
-
-            if gantry_crane.variables_value["cable_length"] > 0.45:
-                hoist_motor_control_input -= 0.005
-            else:
-                hoist_motor_control_input = 0
+            (
+                trolley_motor_control_input,
+                hoist_motor_control_input,
+            ) = slidingModeController.get_control_input(
+                gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
+            )
 
             # Convert control input to PWM
             trolley_motor_pwm = slidingModeController.convert_to_pwm(
@@ -780,24 +851,27 @@ if __name__ == "__main__":
 
             rclpy.spin_once(slidingModeController, timeout_sec=0.01)
 
-            collect_data(gantry_crane, trolley_motor_control_input, hoist_motor_control_input, time_now, trolley_motor_pwm, hoist_motor_pwm)
+            print("slide and hoist... Time now: ", time_now)
+            # collect_data(
+            #     gantry_crane,
+            #     trolley_motor_control_input,
+            #     hoist_motor_control_input,
+            #     time_now,
+            #     trolley_motor_pwm,
+            #     hoist_motor_pwm,
+            # )
 
             if time_now > DURATION:
                 break
-
-        while 1:
+        
+        start_time = time.time()
+        while True:
             time_now = time.time() - start_time
-            print("idle 1... Time now: ", time_now)
 
             # Update matrices
             gantry_crane.update_matrices()
 
             rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-
-            # # Get control input
-            # trolley_motor_control_input, hoist_motor_control_input = slidingModeController.get_control_input(
-            #     gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            # )
 
             trolley_motor_control_input = 0
 
@@ -819,24 +893,35 @@ if __name__ == "__main__":
 
             rclpy.spin_once(slidingModeController, timeout_sec=0.01)
 
-            collect_data(gantry_crane, trolley_motor_control_input, hoist_motor_control_input, time_now, trolley_motor_pwm, hoist_motor_pwm)
+            # print("idle 1... Time now: ", time_now)
+            # collect_data(
+            #     gantry_crane,
+            #     trolley_motor_control_input,
+            #     hoist_motor_control_input,
+            #     time_now,
+            #     trolley_motor_pwm,
+            #     hoist_motor_pwm,
+            # )
 
-            if time_now > 2*DURATION:
+            if time_now > 5:
                 break
 
-        while 1:
+        data = pd.DataFrame(gantry_crane.data_collection_buffer)
+        data.to_excel(
+            DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
+            sheet_name="data",
+            index=False,
+            float_format="%.7f",
+        )
+
+        start_time = time.time()
+        while True:
             time_now = time.time() - start_time
-            print("slide and lower... Time now: ", time_now)
 
             # Update matrices
             gantry_crane.update_matrices()
 
             rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-
-            # # Get control input
-            # trolley_motor_control_input, hoist_motor_control_input = slidingModeController.get_control_input(
-            #     gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            # )
 
             if gantry_crane.variables_value["trolley_position"] > 0.5:
                 trolley_motor_control_input -= 0.005
@@ -864,65 +949,17 @@ if __name__ == "__main__":
 
             rclpy.spin_once(slidingModeController, timeout_sec=0.01)
 
-            collect_data(gantry_crane, trolley_motor_control_input, hoist_motor_control_input, time_now, trolley_motor_pwm, hoist_motor_pwm)
-
-            if time_now > 3*DURATION:
-                break
-
-        while 1:
-            time_now = time.time() - start_time
-            print("idle 2... Time now: ", time_now)
-
-            # Update matrices
-            gantry_crane.update_matrices()
-
-            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-
-            # # Get control input
-            # trolley_motor_control_input, hoist_motor_control_input = slidingModeController.get_control_input(
-            #     gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            # )
-
-            trolley_motor_control_input = 0
-
-            hoist_motor_control_input = 0
-
-            # Convert control input to PWM
-            trolley_motor_pwm = slidingModeController.convert_to_pwm(
-                trolley_motor_control_input
-            )
-            hoist_motor_pwm = slidingModeController.convert_to_pwm(
-                hoist_motor_control_input
-            )
-
-            # Publish motor PWM
-            gantryMode = CONTROL_MODE
-            slidingModeController.publish_motor_pwm(
-                gantryMode, trolley_motor_pwm, hoist_motor_pwm
-            )
-
-            rclpy.spin_once(slidingModeController, timeout_sec=0.01)
-
-            collect_data(gantry_crane, trolley_motor_control_input, hoist_motor_control_input, time_now, trolley_motor_pwm, hoist_motor_pwm)
-
-            if time_now > 4*DURATION:
+            if time_now > 15:
                 break
 
         for i in range(10):
-            gantryMode = CONTROL_MODE
+            gantryMode = MOVE_TO_ORIGIN_MODE
             slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
             rclpy.spin_once(slidingModeController, timeout_sec=0.015)
             time.sleep(0.05)
-
-        data = pd.DataFrame(gantry_crane.data_collection_buffer)
-        data.to_excel(
-            DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
-            sheet_name="data",
-            index=False,
-            float_format="%.7f",
-        )
 
     except KeyboardInterrupt:
         pass
 
     rclpy.shutdown()
+    signal.setitimer(signal.ITIMER_REAL, 0)

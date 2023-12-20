@@ -27,11 +27,11 @@
                 "description": "Component of matrix Lambda second row first column"
             },
             "k1": {
-                "value": 1.0,
+                "value": 9.0,
                 "description": "Component of matrix K first row first column"
             },
             "k2": {
-                "value": 1.0,
+                "value": 12.0,
                 "description": "Component of matrix K second row first column"
             }
         }

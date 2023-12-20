@@ -245,7 +245,17 @@ class Controller(Node):
 
     def linear_interpolation(self, x, x1, y1, x2, y2):
         return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+    
+    def tanh_interpolation(self, x, x1, y1, x2, y2):
+        a=1 #constant on 1, move the graph upward
+        s=0.5 #constan on 1 for rescale to 1 maximum
+        r=2.2 #greater value: move the graph to right
+        k=0.75 #grater value:Increase the steepnes
 
+        tanhres=s*(np.tanh(k*x-r)+a)
+        fres=self.linear_interpolation(tanhres,0,y1,1,y2)
+        return fres
+   
     def get_PID_control_input(self, gantry_crane, x_ref, t, tnow):
         Kpx = 11.7
         Kix = 2.41
@@ -280,12 +290,12 @@ class Controller(Node):
             self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
         )
         """
-        if control_now > 0:
-            control_input1 = int(self.linear_interpolation(control_now, 0, 250, 5, 500))
+        if CS1 > 0:
+            control_input1 = int(self.tanh_interpolation(control_now, 0, 573, 5, 700))
+        elif CS1<0:
+            control_input1 = -1 * (int(self.tanh_interpolation(-control_now, 0, 573, 5, 700)))
         else:
-            control_input1 = -1 * (
-                int(self.linear_interpolation(-control_now, 0, 250, 5, 500))
-            )
+            control_input1=0
 
         if control_input1 > MAX_PWM:
             control_input1 = MAX_PWM
@@ -336,16 +346,16 @@ class Controller(Node):
         )
         """
         if CS1 > 0:
-            control_input1 = int(self.linear_interpolation(CS1, 0, 600, 5, 700))
+            control_input1 = int(self.tanh_interpolation(CS1, 0, 573, 5, 700))
         elif CS1<0:
-            control_input1 = -1 * (int(self.linear_interpolation(-CS1, 0, 600, 5, 700)))
+            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 573, 5, 700)))
         else:
             control_input1=0
 
         if CS2 > 0:
-            control_input2 = int(self.linear_interpolation(CS2, 0, 250, 5, 500))
+            control_input2 = int(self.tanh_interpolation(CS2, 0, 250, 5, 500))
         else:
-            control_input2 = -1 * (int(self.linear_interpolation(-CS2, 0, 250, 5, 500)))
+            control_input2 = -1 * (int(self.tanh_interpolation(-CS2, 0, 250, 5, 500)))
 
         if control_input1 > MAX_PWM:
             control_input1 = MAX_PWM
@@ -402,22 +412,22 @@ if __name__ == "__main__":
             # PID Robust
             timestamp1 = time.time()
             tnow = timestamp1 - timestamp0
-            # (
-            #     trolley_motor_pwm,
-            #     hoist_motor_pwm,
-            # ) = slidingModeController.get_PID_control_input(
-            #     gantry_crane, x_ref, t,tnow
-            # )
-
-            # Lyapunov Control Action
-            x_ref = 1
-            l_ref = 0.5
             (
                 trolley_motor_pwm,
                 hoist_motor_pwm,
-            ) = slidingModeController.get_lyapunov_control_input(
-                gantry_crane, x_ref, l_ref
+            ) = slidingModeController.get_PID_control_input(
+                gantry_crane, x_ref, t,tnow
             )
+
+            # Lyapunov Control Action
+            # x_ref = 1
+            # l_ref = 0.5
+            # (
+            #     trolley_motor_pwm,
+            #     hoist_motor_pwm,
+            # ) = slidingModeController.get_lyapunov_control_input(
+            #     gantry_crane, x_ref, l_ref
+            # )
 
             gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(

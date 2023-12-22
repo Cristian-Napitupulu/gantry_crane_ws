@@ -25,6 +25,7 @@ LOG_FOLDER_PATH = (
     "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
 )
 
+DATA_SAVE_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
 
 class GantryCraneModel:
     def __init__(self, parameter_path):
@@ -596,8 +597,8 @@ def collect_data(
 
 DURATION = 15.0
 
-DESIRED_TROLLEY_POSITION = 0.75
-DESIRED_CABLE_LENGTH = 0.5
+DESIRED_TROLLEY_POSITION = 1.25
+DESIRED_CABLE_LENGTH = 0.6
 
 
 def main():
@@ -653,23 +654,25 @@ def main():
             rclpy.spin_once(gantry_crane, timeout_sec=0.01)
 
             # print("slide and hoist... Time now: ", time_now)
-            # collect_data(
-            #     gantry_crane,
-            #     trolley_motor_control_input,
-            #     hoist_motor_control_input,
-            #     time_now,
-            # )
+            collect_data(
+                gantry_crane,
+                trolley_motor_control_input,
+                hoist_motor_control_input,
+                trolley_motor_pwm,
+                hoist_motor_pwm,
+                time_now,
+            )
 
             if time_now > DURATION:
                 break
 
-        # data = pd.DataFrame(gantry_crane.data_collection_buffer)
-        # data.to_excel(
-        #     DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
-        #     sheet_name="data",
-        #     index=False,
-        #     float_format="%.7f",
-        # )
+        data = pd.DataFrame(gantry_crane.data_collection_buffer)
+        data.to_excel(
+            DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
+            sheet_name="data",
+            index=False,
+            float_format="%.7f",
+        )
 
     except KeyboardInterrupt:
         pass

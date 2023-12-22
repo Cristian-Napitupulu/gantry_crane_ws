@@ -249,8 +249,8 @@ class Controller(Node):
     def tanh_interpolation(self, x, x1, y1, x2, y2):
         a=1 #constant on 1, move the graph upward
         s=0.5 #constan on 1 for rescale to 1 maximum
-        r=2.2 #greater value: move the graph to right
-        k=0.75 #grater value:Increase the steepnes
+        r=1.8 # 2.2 greater value: move the graph to right
+        k= 1 # 0.75#grater value:Increase the steepnes
 
         tanhres=s*(np.tanh(k*x-r)+a)
         fres=self.linear_interpolation(tanhres,0,y1,1,y2)
@@ -258,7 +258,7 @@ class Controller(Node):
    
     def get_PID_control_input(self, gantry_crane, x_ref, t, tnow):
         Kpx = 11.7
-        Kix = 2.41
+        Kix = 2.5#2.41
         Kdx = 18.2
         Kptet = 1.28
         Kitet = -2.03
@@ -271,13 +271,13 @@ class Controller(Node):
         print("xref_t: ", xref_t)
         ex = xref_t - x
         etet = tetha
-        dex = gantry_crane.variables_first_derivative["trolley_position"] / 1000
-        detet = gantry_crane.variables_first_derivative["sway_angle"] / 1000
+        dex = gantry_crane.variables_first_derivative["trolley_position"] 
+        detet = gantry_crane.variables_first_derivative["sway_angle"] 
         self.posIntErr = self.posIntErr + (
-            self.posIntErr * gantry_crane.deltatime["trolley_position"] / 1000
+            self.posIntErr * gantry_crane.deltatime["trolley_position"] 
         )
         self.tetIntErr = self.tetIntErr + (
-            self.tetIntErr * gantry_crane.deltatime["sway_angle"] / 1000
+            self.tetIntErr * gantry_crane.deltatime["sway_angle"] 
         )
         # Control Signal Pos
         CS1 = Kpx * ex + Kix * self.posIntErr + Kdx * dex
@@ -289,14 +289,22 @@ class Controller(Node):
         control_input1 = int(
             self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
         )
-        """
+        
         if CS1 > 0:
-            control_input1 = int(self.tanh_interpolation(control_now, 0, 573, 5, 700))
+            control_input1 = int(self.tanh_interpolation(control_now, 0, 570, 12, 700))
         elif CS1<0:
-            control_input1 = -1 * (int(self.tanh_interpolation(-control_now, 0, 573, 5, 700)))
+            control_input1 = -1 * (int(self.tanh_interpolation(-control_now, 0, 570, 12, 700)))
         else:
             control_input1=0
+        """
 
+        if CS1 > 0:
+            control_input1 = int(self.linear_interpolation(control_now, 0, 580, 4, 700))
+        elif CS1<0:
+            control_input1 = -1 * (int(self.linear_interpolation(-control_now, 0, 580, 4, 700)))
+        else:
+            control_input1=0
+        
         if control_input1 > MAX_PWM:
             control_input1 = MAX_PWM
         elif control_input1 < -MAX_PWM:
@@ -318,7 +326,7 @@ class Controller(Node):
 
     def get_lyapunov_control_input(self, gantry_crane, x_ref, l_ref):
         Kpx = 7.36  # 9.89
-        Kdx = 9.00  # 2.87
+        Kdx = 5.01  # 2.87
         Kpl = 14.18  # 10
         Kdl = 8.98  # 3.13
 
@@ -330,9 +338,9 @@ class Controller(Node):
         etet = tetha
         el = l - l_ref
 
-        dex = gantry_crane.variables_first_derivative["trolley_position"] / 1000
-        detet = gantry_crane.variables_first_derivative["sway_angle"] / 1000
-        dell = gantry_crane.variables_first_derivative["cable_length"] / 1000
+        dex = gantry_crane.variables_first_derivative["trolley_position"] 
+        detet = gantry_crane.variables_first_derivative["sway_angle"] 
+        dell = gantry_crane.variables_first_derivative["cable_length"]
 
         # Control Signal Pos
         CS1 = -Kpx * ex - Kdx * dex
@@ -346,9 +354,9 @@ class Controller(Node):
         )
         """
         if CS1 > 0:
-            control_input1 = int(self.tanh_interpolation(CS1, 0, 573, 5, 700))
+            control_input1 = int(self.tanh_interpolation(CS1, 0, 580, 5, 700))
         elif CS1<0:
-            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 573, 5, 700)))
+            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 580, 5, 700)))
         else:
             control_input1=0
 
@@ -412,22 +420,22 @@ if __name__ == "__main__":
             # PID Robust
             timestamp1 = time.time()
             tnow = timestamp1 - timestamp0
-            (
-                trolley_motor_pwm,
-                hoist_motor_pwm,
-            ) = slidingModeController.get_PID_control_input(
-                gantry_crane, x_ref, t,tnow
-            )
-
-            # Lyapunov Control Action
-            # x_ref = 1
-            # l_ref = 0.5
             # (
             #     trolley_motor_pwm,
             #     hoist_motor_pwm,
-            # ) = slidingModeController.get_lyapunov_control_input(
-            #     gantry_crane, x_ref, l_ref
+            # ) = slidingModeController.get_PID_control_input(
+            #     gantry_crane, x_ref, t,tnow
             # )
+
+            # Lyapunov Control Action
+            x_ref = 1
+            l_ref = 0.5
+            (
+                trolley_motor_pwm,
+                hoist_motor_pwm,
+            ) = slidingModeController.get_lyapunov_control_input(
+                gantry_crane, x_ref, l_ref
+            )
 
             gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(

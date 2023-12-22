@@ -2,38 +2,31 @@
     "sliding_mode_controller": {
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
-            "alpa1": {
-                "value": 1.0,
-                "description": "Component of matrix Alpha first row first column"
+            "matrix_alpha": {
+                "value": [[1.0, 0.0], [0.0, 4.0]],
+                "description": "Matrix Alpha: [[alpha1, 0], [0, alpha2]]"
             },
-            "alpa2": {
-                "value": 1.0,
-                "description": "Component of matrix Alpha second row second column"
+            "matrix_beta": {
+                "value": [[0.5, 0.0], [0.0, 0.5]],
+                "description": "Matrix Beta: [[beta1, 0], [0, beta2]]"
             },
-            "beta1": {
-                "value": 1.0,
-                "description": "Component of matrix Beta first row first column"
+            "matrix_lambda": {
+                "value": [[1.0], [1.0]],
+                "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
-            "beta2": {
-                "value": 1.0,
-                "description": "Component of matrix Beta second row second column"
+            "matrix_k": {
+                "value": [[2.0], [10.0]],
+                "description": "Matrix K: [[k1], [k2]]"
             },
-            "lambda1": {
-                "value": 1.0,
-                "description": "Component of matrix Lambda first row first column"
+            "matrix_gamma": {
+                "value": [[10.0], [5.0]],
+                "description": "Matrix Gamma: [[gamma1], [gamma2]]"
             },
-            "lambda2": {
-                "value": 1.0,
-                "description": "Component of matrix Lambda second row first column"
-            },
-            "k1": {
-                "value": 9.0,
-                "description": "Component of matrix K first row first column"
-            },
-            "k2": {
-                "value": 12.0,
-                "description": "Component of matrix K second row first column"
+            "trolley_control_input_range": {
+                "value": [-12.0, 12.0],
+                "description": "Trolley Control Input Range: [[min1, max1], [min2, max2]]"
             }
+
         }
     }
 }

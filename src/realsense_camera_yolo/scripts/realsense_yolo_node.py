@@ -85,6 +85,10 @@ class RealSenseYOLOServer(Node):
             # Return result
             result.x1, result.y1, result.x2, result.y2 = map(int, bounding_box)
 
+            # Stop timer
+            end = time.time()
+            execution_time = (end - start) * 1000
+
             # Print result for debugging
             self.get_logger().info(
                 f"Bounding box (pixel): ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
@@ -92,6 +96,10 @@ class RealSenseYOLOServer(Node):
         else:
             # Return result
             result.x1, result.y1, result.x2, result.y2 = -1, -1, -1, -1
+
+            # Stop timer
+            end = time.time()
+            execution_time = (end - start) * 1000
 
             # Print result for debugging
             self.get_logger().info(

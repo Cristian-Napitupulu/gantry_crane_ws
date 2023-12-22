@@ -4,6 +4,8 @@ import rclpy
 from gantry_crane_lib.ros_connector import GantryCraneConnector
 from gantry_crane_lib.ros_connector import GantryControlModes
 
+from gantry_crane_lib.logger import Logger
+
 import numpy as np
 import json
 import time
@@ -19,12 +21,8 @@ GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_w
 
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/parameters/sliding_mode_controller_parameters.json"
 
-DATA_SAVE_PATH = (
+LOG_FOLDER_PATH = (
     "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
-)
-
-PICTURE_SAVE_PATH = (
-    "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/pictures/"
 )
 
 
@@ -519,16 +517,18 @@ class Controller:
         else:
             pwm_hoist = 0
         return pwm_trolley, pwm_hoist
-    
+
     def linear_interpolation(self, x, x1, y1, x2, y2):
         return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
 
 
 def collect_data(
-    gantry_crane,
+    time_now,
     trolley_motor_control_input,
     hoist_motor_control_input,
-    time_now,
+    trolley_motor_pwm,
+    hoist_motor_pwm,
+    gantry_crane,
 ):
     # Timestamp
     gantry_crane.data_collection_buffer["timestamp"].append(time_now)
@@ -596,8 +596,8 @@ def collect_data(
 
 DURATION = 15.0
 
-DESIRED_TROLLEY_POSITION = 1.25
-DESIRED_CABLE_LENGTH = 0.4
+DESIRED_TROLLEY_POSITION = 0.75
+DESIRED_CABLE_LENGTH = 0.5
 
 
 def main():
@@ -608,7 +608,7 @@ def main():
     gantry_crane_model.get_connector(gantry_crane)
     print("Gantry crane model initialized.")
 
-    slidingModeController = Controller(SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH)
+    slidingModeController = Controller("sliding_mode", SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH)
     slidingModeController.get_connector(gantry_crane)
     slidingModeController.get_model(gantry_crane_model)
     print("Sliding mode controller initialized.")
@@ -643,108 +643,39 @@ def main():
                 trolley_motor_control_input, hoist_motor_control_input
             )
 
+            print("trolley motor pwm: {}, hoist motor pwm: {}".format(trolley_motor_pwm, hoist_motor_pwm))
+
             # Publish motor PWM
             # gantryMode = GantryControlModes.CONTROL_MODE
-            gantryMode = GantryControlModes.IDLE_MODE
+            gantryMode = GantryControlModes.CONTROL_MODE
             gantry_crane.publish_PWM(gantryMode, trolley_motor_pwm, hoist_motor_pwm)
 
             rclpy.spin_once(gantry_crane, timeout_sec=0.01)
 
             # print("slide and hoist... Time now: ", time_now)
-            collect_data(
-                gantry_crane,
-                trolley_motor_control_input,
-                hoist_motor_control_input,
-                time_now,
-            )
+            # collect_data(
+            #     gantry_crane,
+            #     trolley_motor_control_input,
+            #     hoist_motor_control_input,
+            #     time_now,
+            # )
 
             if time_now > DURATION:
                 break
 
-        data = pd.DataFrame(gantry_crane.data_collection_buffer)
-        data.to_excel(
-            DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
-            sheet_name="data",
-            index=False,
-            float_format="%.7f",
-        )
-
-        # Plot data from buffer
-        plt.figure()
-        plt.plot(
-            gantry_crane.data_collection_buffer["timestamp"],
-            gantry_crane.data_collection_buffer["trolley_position"],
-            label="Trolley position",
-        )
-        plt.plot(
-            gantry_crane.data_collection_buffer["timestamp"],
-            gantry_crane.data_collection_buffer["cable_length"],
-            label="Cable length",
-        )
-        plt.plot(
-            gantry_crane.data_collection_buffer["timestamp"],
-            gantry_crane.data_collection_buffer["sway_angle"],
-            label="Sway angle",
-        )
-        plt.xlabel("Time (s)")
-        plt.ylabel("Position (m)")
-        plt.legend()
-        plt.grid()
-        plt.savefig(
-            PICTURE_SAVE_PATH + "sliding_mode_controller_position.png",
-            dpi=300,
-            bbox_inches="tight",
-        )
-
-        plt.figure("Trolley motor voltage")
-        plt.plot(
-            gantry_crane.data_collection_buffer["timestamp"],
-            gantry_crane.data_collection_buffer["trolley_motor_voltage"],
-            label="Trolley motor voltage",
-        )
-        plt.xlabel("Time (s)")
-        plt.ylabel("Voltage (V)")
-        plt.grid()
-        plt.savefig(
-            PICTURE_SAVE_PATH + "sliding_mode_controller_trolley_motor_voltage.png",
-            dpi=300,
-            bbox_inches="tight",
-        )
-
-        plt.figure("Troley motor PWM")
-        plt.plot(
-            gantry_crane.data_collection_buffer["timestamp"],
-            gantry_crane.data_collection_buffer["trolley_control_pwm"],
-            label="Trolley motor PWM",
-        )
-        plt.xlabel("Time (s)")
-        plt.ylabel("PWM")
-        plt.grid()
-        plt.savefig(
-            PICTURE_SAVE_PATH + "sliding_mode_controller_trolley_motor_pwm.png",
-            dpi=300,
-            bbox_inches="tight",
-        )
-
-        plt.figure("Troley motor voltage vs. PWM")
-        plt.plot(
-            gantry_crane.data_collection_buffer["trolley_control_pwm"],
-            gantry_crane.data_collection_buffer["trolley_motor_voltage"],
-            label="Trolley motor voltage vs. PWM",
-        )
-        plt.xlabel("PWM")
-        plt.ylabel("Voltage (V)")
-        plt.grid()
-        plt.savefig(
-            PICTURE_SAVE_PATH
-            + "sliding_mode_controller_trolley_motor_voltage_vs_pwm.png",
-            dpi=300,
-            bbox_inches="tight",
-        )
-        # plt.show()
+        # data = pd.DataFrame(gantry_crane.data_collection_buffer)
+        # data.to_excel(
+        #     DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
+        #     sheet_name="data",
+        #     index=False,
+        #     float_format="%.7f",
+        # )
 
     except KeyboardInterrupt:
         pass
 
     rclpy.shutdown()
     signal.setitimer(signal.ITIMER_REAL, 0)
+
+if __name__ == "__main__":
+    main()

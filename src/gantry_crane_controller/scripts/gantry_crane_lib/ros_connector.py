@@ -362,6 +362,3 @@ class GantryCraneConnector(Node):
             time.sleep(0.1)
             rclpy.spin_once(self)
         self.get_logger().info("All messages received")
-
-    def collect_data(self):
-        pass

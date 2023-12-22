@@ -27,8 +27,13 @@ float map_value(float x, float in_min, float in_max, float out_min, float out_ma
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+float trolleySpeed = 0;
+int32_t lastEncoderPulse = 0;
+unsigned long lastEncoderTime = 0;
+
 void checkLimitSwitch()
 {
+  // Check limit switch
   if (limitSwitchEncoderSide.getState() == LOW)
   {
     limitSwitchEncoderSideState = true;
@@ -64,12 +69,12 @@ void checkLimitSwitch()
   // Protect system at high speed by reducing PWM by half
   if ((encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
   {
-    trolleyMotorPWM /= 4;
+    trolleyMotorPWM = trolleyMotorPWM / 2;
   }
 
   if ((encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE) && (trolleyMotorPWM < -0.8 * TROLLEY_MOTOR_PWM_MAX))
   {
-    trolleyMotorPWM /= 4;
+    trolleyMotorPWM = trolleyMotorPWM / 2;
   }
 }
 

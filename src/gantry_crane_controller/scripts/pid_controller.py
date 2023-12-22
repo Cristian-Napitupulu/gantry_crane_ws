@@ -325,8 +325,8 @@ class Controller(Node):
         return int(control_input1), int(control_input2)
 
     def get_lyapunov_control_input(self, gantry_crane, x_ref, l_ref):
-        Kpx = 7.36  # 9.89
-        Kdx = 5.01  # 2.87
+        Kpx = 9.36#7.36  # 9.89
+        Kdx = 1.01#5.01  # 2.87
         Kpl = 14.18  # 10
         Kdl = 8.98  # 3.13
 
@@ -342,6 +342,10 @@ class Controller(Node):
         detet = gantry_crane.variables_first_derivative["sway_angle"] 
         dell = gantry_crane.variables_first_derivative["cable_length"]
 
+        if abs(ex) < 0.01:
+           Kdx=0.0005 
+
+        print("kdx: ", Kdx)
         # Control Signal Pos
         CS1 = -Kpx * ex - Kdx * dex
         # Control Signal CLength
@@ -354,9 +358,9 @@ class Controller(Node):
         )
         """
         if CS1 > 0:
-            control_input1 = int(self.tanh_interpolation(CS1, 0, 580, 5, 700))
+            control_input1 = int(self.tanh_interpolation(CS1, 0, 585, 5, 700))
         elif CS1<0:
-            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 580, 5, 700)))
+            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 585, 5, 700)))
         else:
             control_input1=0
 
@@ -420,22 +424,22 @@ if __name__ == "__main__":
             # PID Robust
             timestamp1 = time.time()
             tnow = timestamp1 - timestamp0
-            # (
-            #     trolley_motor_pwm,
-            #     hoist_motor_pwm,
-            # ) = slidingModeController.get_PID_control_input(
-            #     gantry_crane, x_ref, t,tnow
-            # )
-
-            # Lyapunov Control Action
-            x_ref = 1
-            l_ref = 0.5
             (
                 trolley_motor_pwm,
                 hoist_motor_pwm,
-            ) = slidingModeController.get_lyapunov_control_input(
-                gantry_crane, x_ref, l_ref
+            ) = slidingModeController.get_PID_control_input(
+                gantry_crane, x_ref, t,tnow
             )
+
+            # Lyapunov Control Action
+            # x_ref = 0.5
+            # l_ref = 0.5
+            # (
+            #     trolley_motor_pwm,
+            #     hoist_motor_pwm,
+            # ) = slidingModeController.get_lyapunov_control_input(
+            #     gantry_crane, x_ref, l_ref
+            # )
 
             gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(

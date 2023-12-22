@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
+from gantry_crane_lib.logger import Logger
+
 from sliding_mode_controller import main
 
+import os
+
+import numpy as np
 
 import rclpy
 
-LOG_FOLDER_PATH = '/home/roboy/roboy/logs/gantry_crane_controller/'
+LOG_FOLDER_PATH = '/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/log/'
 
 VARIABLE_TO_LOG = {
     "timestamp",
@@ -28,16 +33,9 @@ VARIABLE_TO_LOG = {
     "cable_length_third_derivative",
     "sway_angle_third_derivative",
 }
-class Logger():
-    def __init__(self, parent_folder_path):
-        self.parent_folder_path = parent_folder_path
 
-
-def main():
-    rclpy.init()
-    gantry_crane = GantryCraneConnector()
-    gantry_crane_logger = Logger(gantry_crane.parent_folder_path)
-
+DESIRED_TROLLEY_POSITION = 1.25
+DESIRED_CABLE_LENGTH = 0.4
 
 if __name__ == '__main__':
-    main()
+    gantry_crane_logger = Logger(LOG_FOLDER_PATH)

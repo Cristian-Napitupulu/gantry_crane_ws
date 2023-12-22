@@ -3,10 +3,10 @@ class LED
 private:
     int ledPin;
     bool isBlinking;
-    unsigned long previousMillis;
-    unsigned long blinkPeriod;
+    volatile int32_t previousMillis;
+    int32_t blinkPeriod;
     bool periodChanged;
-    unsigned long pulseDuration = 50;
+    int32_t pulseDuration = 100;
 
 public:
     // Constructor
@@ -35,7 +35,7 @@ public:
     }
 
     // Method to update the LED state (call in loop())
-    void blink(unsigned long blinkPeriod)
+    void blink(int32_t blinkPeriod)
     {
         if (this->blinkPeriod != blinkPeriod)
         {
@@ -44,7 +44,7 @@ public:
         }
         if (isBlinking)
         {
-            unsigned long currentMillis = millis();
+            int32_t currentMillis = millis();
             if (currentMillis - previousMillis >= this->blinkPeriod)
             {
                 previousMillis = currentMillis;
@@ -53,7 +53,7 @@ public:
         }
     }
 
-    void pulse(unsigned long pulsePeriod = 1000)
+    void pulse(int32_t pulsePeriod = 1000)
     {
         if (this->blinkPeriod != pulsePeriod)
         {
@@ -62,7 +62,7 @@ public:
         }
         if (isBlinking)
         {
-            unsigned long currentMillis = millis();
+            int32_t currentMillis = millis();
             if (currentMillis - previousMillis >= this->blinkPeriod)
             {
                 previousMillis = currentMillis;

@@ -64,6 +64,8 @@ private:
     MovingAverage containerXPosition;
     MovingAverage containerYPosition;
     MovingAverage containerZPosition;
+
+    rclcpp::Time last_time;
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

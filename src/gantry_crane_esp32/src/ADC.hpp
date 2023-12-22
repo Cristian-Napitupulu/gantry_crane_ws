@@ -7,10 +7,10 @@
 
 class MovingAverage {
 private:
-  float* buffer;      // Array to store the data
+  volatile float* buffer;      // Array to store the data
   int bufferSize;   // Size of the buffer
-  int currentIndex; // Index to keep track of the current position in the buffer
-  float sum;          // Running sum of the values in the buffer
+  volatile int currentIndex; // Index to keep track of the current position in the buffer
+  volatile float sum;          // Running sum of the values in the buffer
 
 public:
   // Constructor
@@ -60,8 +60,8 @@ void analogToDigitalConverterInit()
   analogToDigitalConverter.setVoltageRange_mV(ADS1115_RANGE_4096);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_0_GND);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_1_GND);
-  analogToDigitalConverter.setCompareChannels(ADS1115_COMP_2_GND);
-  analogToDigitalConverter.setCompareChannels(ADS1115_COMP_3_GND);
+  // analogToDigitalConverter.setCompareChannels(ADS1115_COMP_2_GND);
+  // analogToDigitalConverter.setCompareChannels(ADS1115_COMP_3_GND);
   analogToDigitalConverter.setMeasureMode(ADS1115_CONTINUOUS);
 }
 

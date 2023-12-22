@@ -25,8 +25,6 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
 
     bool isYOLOServerIsUp = initializeYOLOClient();
 
-    rclcpp::Time time_last = rclcpp::Clock().now();
-    float loop_rate_last = 0;
     while (rclcpp::ok())
     {
         // Print something for debugging
@@ -54,17 +52,6 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
             RCLCPP_ERROR(this->get_logger(), "YOLO server is down and no need to publish images.");
             RCLCPP_ERROR(this->get_logger(), "Shutting down...");
             rclcpp::shutdown();
-        }
-
-        // Check log level
-        if (rcutils_logging_get_logger_effective_level(this->get_logger().get_name()) == RCUTILS_LOG_SEVERITY_DEBUG)
-        {
-            // Print loop rate in miliseconds
-            rclcpp::Time time_now = rclcpp::Clock().now();
-            float loop_rate_now = static_cast<float>(1000000000 / (time_now - time_last).nanoseconds());
-            RCLCPP_INFO(this->get_logger(), "Loop rate: \t %.2f \t per second", (loop_rate_now + loop_rate_last) / 2);
-            time_last = time_now;
-            loop_rate_last = loop_rate_now;
         }
     }
 }
@@ -253,8 +240,12 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     sway_angle_message.data = sway_angle;
     swayAnglePublisher->publish(sway_angle_message);
 
+    // Print loop rate in miliseconds
+    rclcpp::Time time_now = rclcpp::Clock().now();
+    int execution_time = static_cast<int>((time_now - last_time).seconds() * 1000);
     // Print cable length and sway angle for debugging
-    RCLCPP_INFO(this->get_logger(), "Cable length: %.5f meters, Sway angle: %.5f degrees", cable_length, sway_angle);
+    RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle, execution_time);
+    last_time = time_now;
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)

@@ -51,6 +51,9 @@
 #define HOIST_MOTOR_PWM_MIN 0
 
 #define TROLLEY_MOTOR_FIND_ORIGIN_PWM 635
+
+#define TROLLEY_SPEED_MAX 5.0
+
 // Encoder
 // Got from measurement
 #define ENCODER_MAX_VALUE 27000
@@ -67,6 +70,7 @@
 * Pin 0 and 1 are used for serial communication, so don't use them.
 * Pin 2 is used for notification LED, so don't use it.
 * Pin 6 to 11 are used for SPI communication, so don't use them.
+* Pin 21 to 23 are used for I2C communication, so don't use them.
 * Pin 34 to 39 are input only, be careful when using them.
 */
 // Encoder pins
@@ -107,7 +111,6 @@
 #define LOCK_CONTAINER_MODE 0x4F
 #define UNLOCK_CONTAINER_MODE 0x5F
 #define CONTROL_MODE 0x6F
-#define COLLECT_DATA_MODE 0xFF
 
 #define BRAKE_COMMAND 0x7FF
 

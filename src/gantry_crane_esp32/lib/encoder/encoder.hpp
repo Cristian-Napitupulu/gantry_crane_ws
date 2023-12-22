@@ -15,7 +15,7 @@ class Encoder {
     private:
         uint8_t channelA;
         uint8_t channelB;
-        int32_t pulses;
+        volatile uint32_t pulses;
 };
 
 

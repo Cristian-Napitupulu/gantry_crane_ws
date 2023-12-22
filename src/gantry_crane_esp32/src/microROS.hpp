@@ -16,7 +16,6 @@
 #include "variable.h"
 #include "utility.h"
 #include "ADC.hpp"
-#include "lookUpTable.hpp"
 
 #if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
 #error This script is only available for Arduino framework with serial transport.
@@ -176,7 +175,7 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
     trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
     lastTrolleyMotorVoltage = trolleyMotorVoltage;
-    if (trolleyMotorPWM == 0 && lastTrolleyMotorVoltage > -0.1){
+    if (trolleyMotorPWM == 0 && lastTrolleyMotorVoltage > -0.5){
       lastTrolleyMotorVoltage = 0;
     }
   }
@@ -196,7 +195,7 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
     hoistMotorVoltageMessage.data = hoistMotorVoltage;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
     lastHoistMotorVoltage = hoistMotorVoltage;
-    if (hoistMotorPWM == 0 && lastHoistMotorVoltage > -0.1){
+    if (hoistMotorPWM == 0 && lastHoistMotorVoltage > -0.5){
       lastHoistMotorVoltage = 0;
     }
   }

@@ -17,7 +17,6 @@ HOIST_MOTOR_VOLTAGE_TOPIC_NAME = "hoist_motor_voltage"
 
 MOTOR_PWM_TOPIC_NAME = "motor_pwm"
 
-
 class GantryControlModes():
     IDLE_MODE = 0x00  # Idle mode, do nothing
     MOVE_TO_ORIGIN_MODE = 0x1F  # Move to origin mode, move trolley to origin

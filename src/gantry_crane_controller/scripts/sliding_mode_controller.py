@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 
 import signal
 
+CONTROLLER_NAME = "sliding_mode_controller"
+
 GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/parameters/gantry_crane_parameters.json"
 
 SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/parameters/sliding_mode_controller_parameters.json"
@@ -304,7 +306,8 @@ class GantryCraneModel:
 
 
 class Controller:
-    def __init__(self, parameter_path):
+    def __init__(self, controller_name, parameter_path):
+        self.name = controller_name
         # Initialize controller parameters
         self.get_parameter(parameter_path)
 
@@ -526,8 +529,6 @@ def collect_data(
     trolley_motor_control_input,
     hoist_motor_control_input,
     time_now,
-    trolley_motor_pwm,
-    hoist_motor_pwm,
 ):
     # Timestamp
     gantry_crane.data_collection_buffer["timestamp"].append(time_now)
@@ -598,7 +599,8 @@ DURATION = 15.0
 DESIRED_TROLLEY_POSITION = 1.25
 DESIRED_CABLE_LENGTH = 0.4
 
-if __name__ == "__main__":
+
+def main():
     rclpy.init()
     gantry_crane = GantryCraneConnector()
 
@@ -654,8 +656,6 @@ if __name__ == "__main__":
                 trolley_motor_control_input,
                 hoist_motor_control_input,
                 time_now,
-                trolley_motor_pwm,
-                hoist_motor_pwm,
             )
 
             if time_now > DURATION:

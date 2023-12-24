@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 import signal
 
+MODEL_NAME = "non_linear_model"
 CONTROLLER_NAME = "sliding_mode_controller"
 
 GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/parameters/gantry_crane_parameters.json"
@@ -25,14 +26,22 @@ LOG_FOLDER_PATH = (
     "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
 )
 
-DATA_SAVE_PATH = "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
+DATA_SAVE_PATH = (
+    "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/data/"
+)
+
 
 class GantryCraneModel:
-    def __init__(self, parameter_path):
+    def __init__(self, model_name, parameter_path):
+        self.name = model_name
+
         self.get_parameter(parameter_path)
         self.initialize_variables()
 
-    def get_connector(self, gantry_crane_connector):
+    def get_name(self):
+        return self.name
+
+    def attach_connector(self, gantry_crane_connector):
         # Get connector to get variables
         self.gantry_crane_object = gantry_crane_connector
 
@@ -295,7 +304,7 @@ class GantryCraneModel:
             / self.Kt2
         )
 
-    def update_matrices(self):
+    def update_model(self):
         self.update_matrix_A()
         self.update_matrix_B()
         self.update_matrix_C()
@@ -310,13 +319,24 @@ class Controller:
         # Initialize controller parameters
         self.get_parameter(parameter_path)
 
-    def get_connector(self, gantry_crane_connector):
+        self.initialize_variables()
+
+    def initialize_variables(self):
+        self.control_signal_trolley = 0.0
+        self.control_signal_hoist = 0.0
+        self.pwm_trolley_motor = 0
+        self.pwm_hoist_motor = 0
+
+    def get_name(self):
+        return self.name
+
+    def attach_connector(self, gantry_crane_connector):
         # Get connector to get variables
         self.gantry_crane_object = gantry_crane_connector
 
-    def get_model(self, gantry_crane_model):
+    def attach_model(self, non_linear_motor_model):
         # Get model to get matrices for control input calculation
-        self.model_gantry_crane = gantry_crane_model
+        self.model_gantry_crane = non_linear_motor_model
 
     def get_parameter(self, parameter_json_path):
         # Get controller parameters
@@ -325,6 +345,7 @@ class Controller:
         """
         Edit this function to change the controller parameters as you want.
         For good practice, make sure you are not hardcoding the parameters.
+        Use json file to store the parameters.
         So, the parameters can be changed easily without recompiling the code.
         """
         # Sliding mode controller parameters
@@ -352,14 +373,20 @@ class Controller:
             ]
         )
 
-    def get_control_input(self, desired_trolley_position, desired_cable_length):
+    def get_control_input(self, desired_trolley_position, desired_cable_length=None):
         """
         Edit this function to change the control input calculation method as you want.
         This function get the desired trolley position and cable length.
         And return the control input for trolley and hoist motor.
         """
+        desired_cable_length_ = desired_cable_length
+        if desired_cable_length is None:
+            desired_cable_length_ = self.gantry_crane_object.variables_value[
+                "cable_length"
+            ]
+
         desiredStateVector = np.matrix(
-            [[desired_trolley_position], [desired_cable_length]]
+            [[desired_trolley_position], [desired_cable_length_]]
         )
         # State vector
         stateVector = np.matrix(
@@ -411,7 +438,7 @@ class Controller:
         slidingSurface = (
             np.matmul(self.matrix_alpha, stateVector - desiredStateVector)
             + np.matmul(self.matrix_beta, stateVectorFirstDerivative)
-            # + stateVectorSecondDerivative
+            + stateVectorSecondDerivative /100000
             + self.matrix_lambda
             * self.gantry_crane_object.variables_value["sway_angle"]
         )
@@ -450,51 +477,38 @@ class Controller:
 
         print("Control now: {}, {}.".format(control_now[0, 0], control_now[1, 0]))
 
-        control_input1 = control_now[0, 0]
-        control_input2 = control_now[1, 0]
+        self.control_signal_trolley = control_now[0, 0]
+        self.control_signal_hoist = control_now[1, 0]
 
-        return control_input1, control_input2
+        if desired_cable_length is None:
+            self.control_signal_hoist = 0.0
 
-    def convert_to_pwm(self, trolley_control_input, hoist_control_input=0):
+        return self.control_signal_trolley, self.control_signal_hoist
+
+    def convert_to_pwm(self, trolley_control_input, hoist_control_input=None):
         """
         Function to converts the control input to PWM linearly.
         This function used to support non-symmetric PWM and deadzone.
         So, you need to specify the PWM range based on the deadzone of each motor.
         Also, you need to specify the control input range.
         """
-        TROLLEY_CONTROL_INPUT_MAX = 12.0
-        TROLLEY_CONTROL_INPUT_MIN = -12.0
+        TROLLEY_CONTROL_SIGNAL_MAX = 12.0
+        TROLLEY_CONTROL_SIGNAL_MIN = 0.0
         # Trolley Deadzone PWM
         TROLLEY_PWM_MAX = 1023
-        TROLLEY_PWM_FORWARD_DEADZONE = 550
-        TROLLEY_PWM_REVERSE_DEADZONE = 550
-        if trolley_control_input > 0:
-            pwm_trolley = int(
-                self.linear_interpolation(
-                    trolley_control_input,
-                    0.0,
-                    TROLLEY_PWM_FORWARD_DEADZONE,
-                    12,
-                    TROLLEY_PWM_MAX,
-                )
-            )
-        elif trolley_control_input < 0:
-            pwm_trolley = int(
-                self.linear_interpolation(
-                    trolley_control_input,
-                    0.0,
-                    -TROLLEY_PWM_REVERSE_DEADZONE,
-                    -12,
-                    -TROLLEY_PWM_MAX,
-                )
-            )
-        else:
-            pwm_trolley = 0
+        TROLLEY_PWM_MIN = 0
+        pwm_trolley = self.linear_interpolation(
+            trolley_control_input,
+            0.0,
+            TROLLEY_PWM_MIN,
+            12,
+            TROLLEY_PWM_MAX,
+        )
 
         # Hoist Deadzone PWM
         HOIST_PWM_MAX = 1023
-        HOIST_PWM_FORWARD_DEADZONE = 550
-        HOIST_PWM_REVERSE_DEADZONE = 550
+        HOIST_PWM_FORWARD_DEADZONE = 0
+        HOIST_PWM_REVERSE_DEADZONE = 0
         if hoist_control_input > 0:
             pwm_hoist = int(
                 self.linear_interpolation(
@@ -517,7 +531,11 @@ class Controller:
             )
         else:
             pwm_hoist = 0
-        return pwm_trolley, pwm_hoist
+
+        self.pwm_trolley_motor = pwm_trolley
+        self.pwm_hoist_motor = pwm_hoist
+
+        return self.pwm_trolley_motor, self.pwm_hoist_motor
 
     def linear_interpolation(self, x, x1, y1, x2, y2):
         return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
@@ -595,90 +613,9 @@ def collect_data(
     )
 
 
-DURATION = 15.0
-
-DESIRED_TROLLEY_POSITION = 1.25
-DESIRED_CABLE_LENGTH = 0.6
-
-
-def main():
-    rclpy.init()
-    gantry_crane = GantryCraneConnector()
-
-    gantry_crane_model = GantryCraneModel(GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH)
-    gantry_crane_model.get_connector(gantry_crane)
-    print("Gantry crane model initialized.")
-
-    slidingModeController = Controller("sliding_mode", SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH)
-    slidingModeController.get_connector(gantry_crane)
-    slidingModeController.get_model(gantry_crane_model)
-    print("Sliding mode controller initialized.")
-
-    try:
-        # Initialize gantry crane
-        gantry_crane.initialize()
-
-        trolley_motor_control_input = 0.0
-        hoist_motor_control_input = 0.0
-
-        trolley_motor_pwm = 0
-        hoist_motor_pwm = 0
-
-        start_time = time.time()
-        while True:
-            time_now = time.time() - start_time
-
-            # Update matrices
-            gantry_crane_model.update_matrices()
-
-            # Generate control input
-            (
-                trolley_motor_control_input,
-                hoist_motor_control_input,
-            ) = slidingModeController.get_control_input(
-                DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            )
-
-            # Convert control input to PWM
-            trolley_motor_pwm, hoist_motor_pwm = slidingModeController.convert_to_pwm(
-                trolley_motor_control_input, hoist_motor_control_input
-            )
-
-            print("trolley motor pwm: {}, hoist motor pwm: {}".format(trolley_motor_pwm, hoist_motor_pwm))
-
-            # Publish motor PWM
-            # gantryMode = GantryControlModes.CONTROL_MODE
-            gantryMode = GantryControlModes.CONTROL_MODE
-            gantry_crane.publish_PWM(gantryMode, trolley_motor_pwm, hoist_motor_pwm)
-
-            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-
-            # print("slide and hoist... Time now: ", time_now)
-            collect_data(
-                gantry_crane,
-                trolley_motor_control_input,
-                hoist_motor_control_input,
-                trolley_motor_pwm,
-                hoist_motor_pwm,
-                time_now,
-            )
-
-            if time_now > DURATION:
-                break
-
-        data = pd.DataFrame(gantry_crane.data_collection_buffer)
-        data.to_excel(
-            DATA_SAVE_PATH + "sliding_mode_controller_data.xlsx",
-            sheet_name="data",
-            index=False,
-            float_format="%.7f",
-        )
-
-    except KeyboardInterrupt:
-        pass
-
-    rclpy.shutdown()
-    signal.setitimer(signal.ITIMER_REAL, 0)
-
-if __name__ == "__main__":
-    main()
+non_linear_motor_model = GantryCraneModel(
+    MODEL_NAME, GANTRY_CRANE_MODEL_PARAMETERS_JSON_PATH
+)
+sliding_mode_controller = Controller(
+    CONTROLLER_NAME, SLIDING_MODE_CONTROLLER_PARAMETERS_JSON_PATH
+)

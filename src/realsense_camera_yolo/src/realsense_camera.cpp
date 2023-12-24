@@ -18,10 +18,12 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
                                      containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE)
 {
+
+    initializeRealSenseCamera();
+
     initializeParameters();
     printParameters();
     initializePublishers();
-    initializeRealSenseCamera();
 
     bool isYOLOServerIsUp = initializeYOLOClient();
 
@@ -123,7 +125,10 @@ void RealSenseCamera::initializeRealSenseCamera()
 {
     rs2::config configuration;
     configuration.enable_stream(RS2_STREAM_DEPTH, depthWidth, depthHeight, RS2_FORMAT_Z16, 30);
-    configuration.enable_stream(RS2_STREAM_COLOR, colorWidth, colorHeight, RS2_FORMAT_BGR8, 30);
+    if (publishColor)
+    {
+        configuration.enable_stream(RS2_STREAM_COLOR, colorWidth, colorHeight, RS2_FORMAT_BGR8, 30);
+    }
     pipeline.start(configuration);
 
     rs2::depth_sensor depthSensor = pipeline.get_active_profile().get_device().first<rs2::depth_sensor>();
@@ -310,7 +315,11 @@ int main(int argc, char **argv)
     }
     catch (const rs2::error &e)
     {
-        std::cerr << e.what() << '\n';
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "RealSense error calling %s: %s", e.get_failed_function().c_str(), e.what());
+    }
+    catch (const std::exception &e)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "%s", e.what());
     }
     rclcpp::shutdown();
     return 0;

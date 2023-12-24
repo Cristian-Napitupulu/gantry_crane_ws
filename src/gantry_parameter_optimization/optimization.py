@@ -26,19 +26,19 @@ sway_angle = data["sway_angle"].values
 
 delta_t = timestamp[1] - timestamp[0]
 
-mc = 2.0
+mc = 1.128
 mt = 2.0
 g = 9.81
 
 # Motor 1
-L1 = 0.0015
-R1 = 10.0
-rp1 = 0.01
+L1 = 0.0001048
+R1 = 0.39
+rp1 = 0.015
 
 # Motor 2
-L2 = 0.0025
-R2 = 1.20
-rp2 = 0.01
+L2 = 0.0073
+R2 = 9.5
+rp2 = 0.015
 
 
 def gantry_model(
@@ -174,28 +174,28 @@ def objective_function(parameters, *args):
     return np.sum(error**2)
 
 # Initial guess
-bt = 0.001
-br = 0.001
-b1 = 0.001
-b2 = 0.001
-J1 = 0.001
-J2 = 0.001
-Kt1 = 0.001
-Kt2 = 0.001
-Ke1 = 0.001
-Ke2 = 0.001
+bt = 0.5
+br = 10.0
+b1 = 0.0004
+b2 = 0.0008
+J1 = 0.00008859375
+J2 = 0.000015625
+Kt1 = 20.03
+Kt2 = 33.54
+Ke1 = 0.00818
+Ke2 = 0.00818
 parameters = [bt, br, b1, b2, J1, J2, Kt1, Kt2, Ke1, Ke2]
 
 # Set bounds
 bounds = (
-    (0.0, 0.1),  # bt
-    (0.0, 0.1),  # br
+    (0.0, 10),  # bt
+    (0.0, 100),  # br
     (0.0, 0.1),  # b1
     (0.0, 0.1),  # b2
-    (0.0, 0.1),  # J1
-    (0.0, 0.1),  # J2
-    (0.0, 0.1),  # Kt1
-    (0.0, 0.1),  # Kt2
+    (0.0, 0.0001),  # J1
+    (0.0, 0.0001),  # J2
+    (0.0, 100),  # Kt1
+    (0.0, 100),  # Kt2
     (0.0, 0.1),  # Ke1
     (0.0, 0.1),  # Ke2
 )

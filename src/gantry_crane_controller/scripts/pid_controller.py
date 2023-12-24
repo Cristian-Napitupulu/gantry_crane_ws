@@ -26,7 +26,7 @@ SWAY_ANGLE_TOPIC_NAME = "sway_angle"
 MOTOR_PWM_TOPIC_NAME = "motor_pwm"
 
 # Mode
-IDLE_MODE = 0x00
+IDLE_MODE = 0x0F
 MOVE_TO_ORIGIN_MODE = 0x1F
 MOVE_TO_MIDDLE_MODE = 0x2F
 MOVE_TO_END_MODE = 0x3F
@@ -424,22 +424,22 @@ if __name__ == "__main__":
             # PID Robust
             timestamp1 = time.time()
             tnow = timestamp1 - timestamp0
-            (
-                trolley_motor_pwm,
-                hoist_motor_pwm,
-            ) = slidingModeController.get_PID_control_input(
-                gantry_crane, x_ref, t,tnow
-            )
-
-            # Lyapunov Control Action
-            # x_ref = 0.5
-            # l_ref = 0.5
             # (
             #     trolley_motor_pwm,
             #     hoist_motor_pwm,
-            # ) = slidingModeController.get_lyapunov_control_input(
-            #     gantry_crane, x_ref, l_ref
+            # ) = slidingModeController.get_PID_control_input(
+            #     gantry_crane, x_ref, t,tnow
             # )
+
+            # Lyapunov Control Action
+            x_ref = 0.5
+            l_ref = 0.5
+            (
+                trolley_motor_pwm,
+                hoist_motor_pwm,
+            ) = slidingModeController.get_lyapunov_control_input(
+                gantry_crane, x_ref, l_ref
+            )
 
             gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(

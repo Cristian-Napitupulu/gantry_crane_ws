@@ -17,8 +17,9 @@ HOIST_MOTOR_VOLTAGE_TOPIC_NAME = "hoist_motor_voltage"
 
 MOTOR_PWM_TOPIC_NAME = "motor_pwm"
 
-class GantryControlModes():
-    IDLE_MODE = 0x00  # Idle mode, do nothing
+
+class GantryControlModes:
+    IDLE_MODE = 0x0F  # Idle mode, do nothing
     MOVE_TO_ORIGIN_MODE = 0x1F  # Move to origin mode, move trolley to origin
     MOVE_TO_MIDDLE_MODE = 0x2F  # Move to middle mode, move trolley to middle
     MOVE_TO_END_MODE = 0x3F  # Move to end mode, move trolley to end
@@ -34,6 +35,9 @@ class GantryCraneConnector(Node):
     def __init__(self):
         super().__init__(GANTRY_CRANE_NODE_NAME)
 
+        # Get node name
+        self.name = self.get_name()
+
         self.subscribers = {}
         self.initialize_subscribers()
 
@@ -44,7 +48,7 @@ class GantryCraneConnector(Node):
 
         self.initialize_variables()
 
-        self.get_logger().info("Gantry crane system initialized.")
+        self.get_logger().info("Gantry crane connector initialized: " + self.name)
 
     def initialize_subscribers(self):
         # Create subscriber for trolley position topic
@@ -234,11 +238,11 @@ class GantryCraneConnector(Node):
         }
 
         self.last_variables_message_timestamp = {
-            "trolley_position": None,
-            "cable_length": None,
-            "sway_angle": None,
-            "trolley_motor_voltage": None,
-            "hoist_motor_voltage": None,
+            "trolley_position": 0,
+            "cable_length": 0,
+            "sway_angle": 0,
+            "trolley_motor_voltage": 0,
+            "hoist_motor_voltage": 0,
         }
 
         self.control_input = {
@@ -252,6 +256,8 @@ class GantryCraneConnector(Node):
         }
 
     def reset_variable(self):
+        self.get_logger().info("Resetting gantry crane variables...")
+
         self.variables_value["trolley_position"] = 0.0
         self.variables_value["cable_length"] = 0.0
         self.variables_value["sway_angle"] = 0.0
@@ -332,26 +338,24 @@ class GantryCraneConnector(Node):
             | ((pwm_hoist_motor & 0xFFF) << 20)
         )
         return packed_value
-    
-    def initialize(self):
-        self.reset_variable()
-        self.wait_for_subscribers()
+
+    def begin(self):
         self.wait_for_messages()
-        start_time = time.time()
-        while time.time() - start_time < 1.0:
-            gantryMode = GantryControlModes.IDLE_MODE
-            self.publish_PWM(gantryMode, 0, 0)
-            time.sleep(0.1)
-            rclpy.spin_once(self)
-        self.get_logger().info("Gantry crane system initialized.")
+        self.wait_for_subscribers()
+        self.reset_variable()
+        self.reset_position()
+
+        self.get_logger().info("Gantry crane connector ready")
 
     def wait_for_subscribers(self):
+        self.get_logger().info("Waiting for subscribers...")
         while self.motor_pwm_publisher.get_subscription_count() == 0:
             time.sleep(0.1)
             rclpy.spin_once(self)
         self.get_logger().info("All subscribers ready")
 
     def wait_for_messages(self):
+        self.get_logger().info("Waiting for messages...")
         while (
             self.variables_value["trolley_position"] is None
             or self.variables_value["cable_length"] is None
@@ -362,3 +366,15 @@ class GantryCraneConnector(Node):
             time.sleep(0.1)
             rclpy.spin_once(self)
         self.get_logger().info("All messages received")
+
+    def reset_position(self):
+        self.get_logger().info("Resetting trolley position...")
+        start_time = time.time()
+        while (
+            self.variables_value["trolley_position"] > 0.01
+            or time.time() - start_time < 5.0
+        ):
+            # self.get_logger().info("Moving trolley to origin... Current position: " + str(self.variables_value["trolley_position"]))
+            self.publish_PWM(GantryControlModes.MOVE_TO_ORIGIN_MODE, 0, 0)
+            rclpy.spin_once(self, timeout_sec=0.1)
+            # time.sleep(0.05)

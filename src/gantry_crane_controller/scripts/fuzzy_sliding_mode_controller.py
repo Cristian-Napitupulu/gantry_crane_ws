@@ -29,7 +29,7 @@ SWAY_ANGLE_TOPIC_NAME = "sway_angle"
 MOTOR_PWM_TOPIC_NAME = "motor_pwm"
 
 # Mode
-IDLE_MODE = 0x00
+IDLE_MODE = 0x0F
 MOVE_TO_ORIGIN_MODE = 0x1F
 MOVE_TO_MIDDLE_MODE = 0x2F
 MOVE_TO_END_MODE = 0x3F
@@ -343,11 +343,11 @@ class Controller(Node):
         PB = IT2FS_Gaussian_UncertStd(self.domain, [1, 0.2, 0.1, 1.0])
         # IT2FS_plot(NB,NS, Z, PS, PB,legends=["Negative Big","Negative Small", "Zero", "Positive Small", "Positive Big"])
 
-        self.domain_k = linspace(-0.25, 1.3, 101)
-        Zk = IT2FS_Gaussian_UncertStd(self.domain_k, [0.0, 0.05, 0.02, 1.0])
-        PSk = IT2FS_Gaussian_UncertStd(self.domain_k, [0.3, 0.07, 0.02, 1.0])
-        PMk = IT2FS_Gaussian_UncertStd(self.domain_k, [0.6, 0.08, 0.02, 1.0])
-        PBk = IT2FS_Gaussian_UncertStd(self.domain_k, [1.0, 0.08, 0.02, 1.0])
+        self.domain_k = linspace(-1, 4, 101)
+        Zk = IT2FS_Gaussian_UncertStd(self.domain_k, [0.0, 0.08, 0.08, 1.0])
+        PSk = IT2FS_Gaussian_UncertStd(self.domain_k, [1, 0.4, 0.3, 1.0])
+        PMk = IT2FS_Gaussian_UncertStd(self.domain_k, [2, 0.3, 0.3, 1.0])
+        PBk = IT2FS_Gaussian_UncertStd(self.domain_k, [3, 0.3, 0.3, 1.0])
         # IT2FS_plot(Zk, PSk, PMk, PBk,legends=["Zero", "Positive Small", "Positive Medium", "Positive Big"])
 
         self.it2fls = IT2FLS()
@@ -410,7 +410,7 @@ class Controller(Node):
 
     def u_fuzzy(self, St):
         S = max(-1.5, min(1.5, St[0]))
-        S_dot = max(-1.0, min(1.0, St[1]))
+        S_dot = max(-1.5, min(1.5, St[1]))
         c, TR = self.it2fls.evaluate(
             {"S": S, "S_dot": S_dot},
             product_t_norm,
@@ -420,18 +420,25 @@ class Controller(Node):
             algorithm="EKM",
         )
         K = (TR["K"][0] + TR["K"][1]) / 2
-        print("K:", K)
+        
         return K
 
     def parameter(self):
+        # [k, lambda1, lambda2, alpha1, alpha2] = [
+        #     1.85048618e-01,
+        #     0.5,
+        #     4.34629608e-01,
+        #     2.53926722e00,
+        #     9.96405942e-07,
+        # ]
         [k, lambda1, lambda2, alpha1, alpha2] = [
             1.85048618e-01,
             0.5,
             4.34629608e-01,
-            2.53926722e00,
+            2.5,
             9.96405942e-07,
         ]
-
+        
         self.matrix_lambda = np.matrix([[lambda1, 0.0], [0.0, lambda2]])
         self.matrix_alpha = np.matrix([[alpha1], [alpha2]])
         self.matrix_I = np.matrix([[1.0, 0.0], [0.0, 1.0]])
@@ -463,7 +470,8 @@ class Controller(Node):
         # Modify as needed
 
         desiredStateVector = np.matrix(
-            [[desired_trolley_position], [desired_cable_length]]
+            [[desired_trolley_position], 
+             [desired_cable_length]]
         )
         # print("Desired state vector: ", desiredStateVector)
 
@@ -519,19 +527,25 @@ class Controller(Node):
         )
 
         # Create dummy matrix for sliding surface
+        # sliding_surface_now = (
+        #     self.matrix_lambda * (desiredStateVector - stateVector)
+        #     - self.matrix_I * stateVectorFirstDerivative
+        #     - self.matrix_alpha * gantry_crane.variables_value["sway_angle"]
+        # )
         sliding_surface_now = (
             self.matrix_lambda * (desiredStateVector - stateVector)
             - self.matrix_I * stateVectorFirstDerivative
             - self.matrix_alpha * gantry_crane.variables_value["sway_angle"]
         )
-
+    
         sliding_surface_dot = sliding_surface_now - self.sliding_surface_last
         self.sliding_surface_last = sliding_surface_now
-
+        print("SSurface:",sliding_surface_now)
         SSx = [sliding_surface_now.item(0), sliding_surface_dot.item(0)]
         SSl = [sliding_surface_now.item(1), sliding_surface_dot.item(1)]
         kx = self.u_fuzzy(SSx)
         kl = self.u_fuzzy(SSl)
+        print(f"Kx: {kx},SSx:{SSx}, Kl: {kl},SSl:{SSx}")
         k = np.matrix([[kx], [kl]])
 
         control_now = np.linalg.inv(matrix_B_cap) * (
@@ -542,7 +556,7 @@ class Controller(Node):
             + np.multiply(k, self.sign_matrix(sliding_surface_now))
         )
 
-        print("Control now: ", control_now)
+        
 
         # time.sleep(0.2)
 
@@ -564,7 +578,8 @@ class Controller(Node):
 
         # print("Control input 1: ", control_input1)
         # print("Control input 2: ", control_input2)
-
+     
+        print("Control now: ", control_input1, control_input2)
         return control_input1, control_input2
 
     def convert_to_pwm(self, voltage):
@@ -574,13 +589,13 @@ class Controller(Node):
         if voltage > 0:
             pwm = int(
                 self.linear_interpolation(
-                    voltage, 0.0, FORWARD_DEADZONE_PWM, 2, MAX_PWM
+                    voltage, 0.0, FORWARD_DEADZONE_PWM, 4, MAX_PWM
                 )
             )
         elif voltage < 0:
             pwm = int(
                 self.linear_interpolation(
-                    voltage, 0.0, -REVERSE_DEADZONE_PWM, -2, -MAX_PWM
+                    voltage, 0.0, -REVERSE_DEADZONE_PWM, -5, -MAX_PWM
                 )
             )
         else:

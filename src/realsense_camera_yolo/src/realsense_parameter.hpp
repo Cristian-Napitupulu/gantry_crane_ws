@@ -18,8 +18,8 @@
  * 1024x768
  * 640x480
  * 320x240*/
-#define DEPTH_FRAME_WIDTH 640
-#define DEPTH_FRAME_HEIGHT 480
+#define DEPTH_FRAME_WIDTH 320
+#define DEPTH_FRAME_HEIGHT 240
 
 /* Color frame resolution (width and height)
  * Option:

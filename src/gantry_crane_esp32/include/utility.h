@@ -27,6 +27,22 @@ float map_value(float x, float in_min, float in_max, float out_min, float out_ma
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+int get_sign(int x)
+{
+  if (x > 0)
+  {
+    return 1;
+  }
+  else if (x < 0)
+  {
+    return -1;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 float trolleySpeed = 0;
 int32_t lastEncoderPulse = 0;
 unsigned long lastEncoderTime = 0;

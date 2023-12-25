@@ -9,6 +9,7 @@ class Logger:
     def __init__(self, parent_folder_path):
         self.parent_folder_path = parent_folder_path
         self.buffers = {}
+        self.reset_timer()
 
     def add_to_buffer(self, variable_name, value):
         if variable_name not in self.buffers:
@@ -36,6 +37,9 @@ class Logger:
         plot_path = os.path.join(self.folder_path, variable_name + ".png")
         plt.savefig(plot_path)
         plt.close()
-    
-    def begin(self):
+
+    def reset_timer(self):
         self.start_time = time.time()
+
+    def get_time_sec(self):
+        return time.time() - self.start_time

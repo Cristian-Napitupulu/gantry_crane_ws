@@ -7,7 +7,6 @@
 #include <encoder.hpp>
 #include <debounce.hpp>
 #include <ADS1115_WE.h>
-#include <pid.hpp>
 
 #include "parameter.h"
 
@@ -31,7 +30,5 @@ bool limitSwitchTrolleyMotorSideState = false;
 LED ledBuiltIn(LED_BUILTIN);
 
 ADS1115_WE analogToDigitalConverter = ADS1115_WE(ADS1115_I2C_ADDRESS);
-
-PID pidTrolley(TROLLEY_MOTOR_KP, TROLLEY_MOTOR_KI, TROLLEY_MOTOR_KD, TROLLEY_MOTOR_MAX_INTEGRAL, TROLLEY_MOTOR_PWM_MAX);
 
 #endif // VARIABLE_H

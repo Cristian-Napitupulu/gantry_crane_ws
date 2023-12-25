@@ -88,7 +88,6 @@ void setup()
   //     1,
   //     &spinMicroROSTaskHandle,
   //     1);
-  
 }
 
 unsigned long lastTime = 0;
@@ -107,35 +106,52 @@ void controllerCommandTask(void *parameter)
     trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
     hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
 
-    trolleyMotor.setPWM(trolleyMotorPWM);
-    hoistMotor.setPWM(hoistMotorPWM);
-
-    switch (gantryMode)
+    if (brakeTrolleyMotor)
     {
-    case IDLE_MODE:
+      trolleyMotor.setPWM(0);
+      brakeTrolleyMotor = false;
+      trolleyMotor.brake();
+    }
+    else
+    {
+      trolleyMotor.setPWM(trolleyMotorPWM);
+    }
+
+    if (brakeHoistMotor)
+    {
+      hoistMotor.setPWM(0);
+      brakeHoistMotor = false;
+      hoistMotor.brake();
+    }
+    else{
+      hoistMotor.setPWM(hoistMotorPWM);
+    }
+
+    if (gantryMode == IDLE_MODE)
+    {
       // Do nothing
       trolleyMotorPWM = 0;
       hoistMotorPWM = 0;
       lastTrolleyMotorVoltage = 0;
       lastHoistMotorVoltage = 0;
-      break;
-
-    case CONTROL_MODE:
+    }
+    else if (gantryMode == CONTROL_MODE)
+    {
       // Control gantry
       // Add code specific to CONTROL_MODE
-      break;
-
-    case LOCK_CONTAINER_MODE:
+    }
+    else if (gantryMode == LOCK_CONTAINER_MODE)
+    {
       // Lock container
       // Add code specific to LOCK_CONTAINER_MODE
-      break;
-
-    case UNLOCK_CONTAINER_MODE:
+    }
+    else if (gantryMode == UNLOCK_CONTAINER_MODE)
+    {
       // Unlock container
       // Add code specific to UNLOCK_CONTAINER_MODE
-      break;
-
-    case MOVE_TO_ORIGIN_MODE:
+    }
+    else if (gantryMode == MOVE_TO_ORIGIN_MODE)
+    {
       if (limitSwitchEncoderSide.getState() != LOW)
       {
         trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
@@ -146,29 +162,20 @@ void controllerCommandTask(void *parameter)
         trolleyMotorPWM = 0;
         gantryMode = IDLE_MODE;
       }
-      break;
-
-    case MOVE_TO_MIDDLE_MODE:
-      trolleyMotorPWM = static_cast<int16_t>(pidTrolley.calculate(ENCODER_MAX_VALUE / 2, encoderTrolley.getPulse()));
+    }
+    else if (gantryMode == MOVE_TO_MIDDLE_MODE)
+    {
+      trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM * get_sign(ENCODER_MAX_VALUE / 2 - encoderTrolley.getPulse());
       hoistMotorPWM = 0;
 
-      if (!inside && (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.001 * ENCODER_MAX_VALUE))
+      if (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.01 * ENCODER_MAX_VALUE)
       {
-        lastTime = millis();
-        inside = true;
-      }
-      if (inside && (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) > 0.001 * ENCODER_MAX_VALUE))
-      {
-        inside = false;
-      }
-
-      if (inside && (millis() - lastTime > 5000))
-      {
+        trolleyMotorPWM = 0;
         gantryMode = IDLE_MODE;
       }
-      break;
-
-    case MOVE_TO_END_MODE:
+    }
+    else if (gantryMode == MOVE_TO_END_MODE)
+    {
       if (limitSwitchTrolleyMotorSide.getState() != LOW)
       {
         trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
@@ -179,14 +186,13 @@ void controllerCommandTask(void *parameter)
         trolleyMotorPWM = 0;
         gantryMode = IDLE_MODE;
       }
-      break;
-
-    default:
+    }
+    else
+    {
       gantryMode = IDLE_MODE;
     }
   }
 }
-
 
 void findOrigin()
 {

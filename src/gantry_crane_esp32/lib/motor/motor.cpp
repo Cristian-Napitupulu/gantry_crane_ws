@@ -73,6 +73,7 @@ void Motor::setPWM(int16_t PWM)
 
 void Motor::brake()
 {
+    this->setPWM(0);
     digitalWrite(this->forwardPin, LOW);
     digitalWrite(this->reversePin, LOW);
     analogWrite(this->pwmPin, this->maxPWM);

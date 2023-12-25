@@ -373,7 +373,7 @@ class Controller:
             ]
         )
 
-    def get_control_input(self, desired_trolley_position, desired_cable_length=None):
+    def get_control_signal(self, desired_trolley_position, desired_cable_length=None):
         """
         Edit this function to change the control input calculation method as you want.
         This function get the desired trolley position and cable length.
@@ -492,8 +492,6 @@ class Controller:
         So, you need to specify the PWM range based on the deadzone of each motor.
         Also, you need to specify the control input range.
         """
-        TROLLEY_CONTROL_SIGNAL_MAX = 12.0
-        TROLLEY_CONTROL_SIGNAL_MIN = 0.0
         # Trolley Deadzone PWM
         TROLLEY_PWM_MAX = 1023
         TROLLEY_PWM_MIN = 0
@@ -507,30 +505,17 @@ class Controller:
 
         # Hoist Deadzone PWM
         HOIST_PWM_MAX = 1023
-        HOIST_PWM_FORWARD_DEADZONE = 0
-        HOIST_PWM_REVERSE_DEADZONE = 0
-        if hoist_control_input > 0:
-            pwm_hoist = int(
-                self.linear_interpolation(
-                    hoist_control_input,
-                    0.0,
-                    HOIST_PWM_FORWARD_DEADZONE,
-                    12,
-                    HOIST_PWM_MAX,
-                )
-            )
-        elif hoist_control_input < 0:
-            pwm_hoist = int(
-                self.linear_interpolation(
-                    hoist_control_input,
-                    0.0,
-                    -HOIST_PWM_REVERSE_DEADZONE,
-                    -12,
-                    -HOIST_PWM_MAX,
-                )
-            )
-        else:
+        HOIST_PWM_MIN = 0
+        if hoist_control_input is None:
             pwm_hoist = 0
+        else:
+            pwm_hoist = self.linear_interpolation(
+                hoist_control_input,
+                0.0,
+                HOIST_PWM_MIN,
+                12,
+                HOIST_PWM_MAX,
+            )
 
         self.pwm_trolley_motor = pwm_trolley
         self.pwm_hoist_motor = pwm_hoist
@@ -539,6 +524,15 @@ class Controller:
 
     def linear_interpolation(self, x, x1, y1, x2, y2):
         return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+    
+    def get_control_pwm(self, desired_trolley_position, desired_cable_length=None):
+        trolley_control_input, hoist_control_input = self.get_control_signal(
+            desired_trolley_position, desired_cable_length
+        )
+        trolley_pwm, hoist_pwm = self.convert_to_pwm(
+            trolley_control_input, hoist_control_input
+        )
+        return trolley_pwm, hoist_pwm
 
 
 def collect_data(

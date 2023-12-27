@@ -29,10 +29,12 @@ private:
     bool initializeYOLOClient();
 
     void sendRequestToYOLO(rs2::frameset frames);
+    std::vector<rs2::vertex> generatePointCloudInsideBoundingBox(rs2::depth_frame depth_frame);
     void projectContainerPixelToPoint(rs2::depth_frame depth_frame);
     void publishCableLengthAndSwayAngle();
     void publishImage(rs2::frameset frames);
     rs2::depth_frame processDepthFrame(rs2::depth_frame depth_frame);
+    cv::Mat pointCloudToMat(std::vector<rs2::vertex> pointCloud);
 
     // Declare action client
     rclcpp::Client<RealsenseYOLO>::SharedPtr YOLO_client;

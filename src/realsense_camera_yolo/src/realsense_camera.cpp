@@ -1,6 +1,10 @@
 #include "realsense_camera/realsense_camera.hpp"
 #include "realsense_parameter.hpp"
 
+#define NO_RESULT 0
+#define YOLO_RESULT 1
+#define CORNER_RESULT 2
+
 RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      YOLO_client(nullptr),
                                      depthImagePublisher(nullptr),
@@ -166,17 +170,27 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
         // Get response
         auto response = result.get();
 
-        if (response->x1 == -1 && response->y1 == -1 && response->x2 == -1 && response->y2 == -1)
+        if (response->id == NO_RESULT)
         {
             RCLCPP_WARN(this->get_logger(), "No container detected.");
             return;
         }
-
-        // Get bounding box pixel
-        containerBoundingBoxPixel[0] = response->x1;
-        containerBoundingBoxPixel[1] = response->y1;
-        containerBoundingBoxPixel[2] = response->x2;
-        containerBoundingBoxPixel[3] = response->y2;
+        else if (response->id == YOLO_RESULT)
+        {
+            // Get bounding box pixel
+            containerBoundingBoxPixel[0] = response->x1;
+            containerBoundingBoxPixel[1] = response->y1;
+            containerBoundingBoxPixel[2] = response->x2;
+            containerBoundingBoxPixel[3] = response->y2;
+        }
+        else if (response->id == CORNER_RESULT)
+        {
+            // Get bounding box pixel
+            containerBoundingBoxPixel[0] = response->x1;
+            containerBoundingBoxPixel[1] = response->y1;
+            containerBoundingBoxPixel[2] = response->x2;
+            containerBoundingBoxPixel[3] = response->y2;
+        }
 
         // Project bounding box pixel to point
         projectContainerPixelToPoint(depth_frame);
@@ -193,11 +207,89 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
     RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
 }
 
+std::vector<rs2::vertex> RealSenseCamera::generatePointCloudInsideBoundingBox(rs2::depth_frame depth_frame)
+{
+    // Get depth value
+    rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
+    rs2_intrinsics depth_intrinsics = depth_profile.get_intrinsics();
+
+    // Get bounding box pixel
+    int x1 = containerBoundingBoxPixel[0];
+    int y1 = containerBoundingBoxPixel[1];
+    int x2 = containerBoundingBoxPixel[2];
+    int y2 = containerBoundingBoxPixel[3];
+
+    std::vector<rs2::vertex> pointCloud;
+
+    // Get depth frame dimensions
+    int width = depth_frame.get_width();
+    int height = depth_frame.get_height();
+
+    // Iterate over pixels inside the bounding box
+    for (int y = y1; y < y2; ++y)
+    {
+        for (int x = x1; x < x2; ++x)
+        {
+            // Ensure the pixel coordinates are within the frame dimensions
+            if (x >= 0 && x < width && y >= 0 && y < height)
+            {
+                // Get the depth value at the current pixel
+                float depthValue = depth_frame.get_distance(x, y);
+
+                // Check if the depth value is valid
+                if (depthValue > minimumDistance && depthValue < maximumDistance)
+                {
+                    float coordinates[2] = {(float)x, (float)y};
+
+                    float depthPoint[3];
+                    rs2_deproject_pixel_to_point(depthPoint, &depth_intrinsics, coordinates, depthValue);
+                    // Map pixel coordinates to 3D point in camera coordinates
+                    rs2::vertex point = {static_cast<float>(depthPoint[0]),
+                                         static_cast<float>(depthPoint[1]),
+                                         static_cast<float>(depthPoint[2])};
+                    pointCloud.push_back(point);
+                }
+            }
+        }
+    }
+
+    return pointCloud;
+}
+
+cv::Mat RealSenseCamera::pointCloudToMat(std::vector<rs2::vertex> pointCloud)
+{
+    int size = static_cast<int>(pointCloud.size());
+    // Create a matrix with the same number of rows as the point cloud
+    cv::Mat pointCloudMat(size, 3, CV_32FC1);
+
+    // Iterate over the point cloud
+    for (int i = 0; i < size; ++i)
+    {
+        // Get the coordinates of the current point
+        float x = pointCloud[i].x;
+        float y = pointCloud[i].y;
+        float z = pointCloud[i].z;
+
+        // Store the coordinates in the matrix
+        pointCloudMat.at<float>(i, 0) = x;
+        pointCloudMat.at<float>(i, 1) = y;
+        pointCloudMat.at<float>(i, 2) = z;
+    }
+
+    return pointCloudMat;
+}
+
 void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
 {
     // Get center pixel
     float center_pixel[2] = {(float)(containerBoundingBoxPixel[0] + containerBoundingBoxPixel[2]) / 2,
                              (float)(containerBoundingBoxPixel[1] + containerBoundingBoxPixel[3]) / 2};
+    if (center_pixel[0] < 0 || center_pixel[0] > depthWidth || center_pixel[1] < 0 || center_pixel[1] > depthHeight)
+    {
+        RCLCPP_INFO(this->get_logger(), "Center pixel is out of range.");
+        return;
+    }
+
     float depth_value = depth_frame.get_distance(center_pixel[0], center_pixel[1]);
     // Get depth value
     rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();

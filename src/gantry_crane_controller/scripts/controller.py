@@ -403,33 +403,34 @@ if __name__ == "__main__":
     gantry_crane_controller.attach_model(gantry_crane_model)
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
+    # gantry_crane.hoist_container_to_middle()
     # Initialize gantry crane
     gantry_crane.begin()
     # # time.sleep(5.0)
-    # gantry_crane.hoist_container_to_top()
-    # # time.sleep(5.0)
-    # gantry_crane.move_trolley_to_middle()
-    # # time.sleep(5.0)
-    gantry_crane.hoist_container_to_middle()
-    time.sleep(5.0)
-    # gantry_crane.move_trolley_to_end()
-    # # time.sleep(5.0)
-    # gantry_crane.hoist_container_to_bottom()
-    # # time.sleep(5.0)
-    # gantry_crane.move_trolley_to_origin()
-    # # time.sleep(5.0)
 
     try:
+        while True:
+            # gantry_crane.move_trolley_to_middle()
+            # time.sleep(10.0)
+            # gantry_crane.move_trolley_to_end()
+            # time.sleep(10.0)
+            # gantry_crane.move_trolley_to_origin()
+            # time.sleep(10.0)
+            gantry_crane.hoist_container_to_top()
+            time.sleep(10.0)
+            gantry_crane.hoist_container_to_bottom()
+            time.sleep(10.0)
+            gantry_crane.hoist_container_to_middle()
+            time.sleep(10.0)
 
-        for i in range(5):
-            # Begin logger timer
-            gantry_crane_logger.reset_timer()
+        # # Begin logger timer
+        # gantry_crane_logger.reset_timer()
 
-            # Sweep trolley motor PWM
-            sweep_trolley_motor_pwm(pwm_range=[0, 800], increment=1, timeout_sec=0.1)
+        # Sweep trolley motor PWM
+        # sweep_trolley_motor_pwm(pwm_range=[0, 850], increment=1, timeout_sec=0.1)
 
-            gantry_crane.move_trolley_to_origin()
-            time.sleep(5.0)
+        # gantry_crane.move_trolley_to_origin()
+        # time.sleep(5.0)
 
         # Sweep hoist motor PWM
         # sweep_hoist_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0)

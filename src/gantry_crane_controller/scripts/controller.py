@@ -8,7 +8,7 @@ from sliding_mode_controller import non_linear_motor_model, sliding_mode_control
 import rclpy
 import time
 
-gantry_crane = GantryCraneConnector()
+gantry_crane_connector = GantryCraneConnector()
 
 LOG_FOLDER_PATH = (
     "/home/icodes/Documents/gantry_crane_ws/src/gantry_crane_controller/log"
@@ -60,78 +60,78 @@ def collect_data():
     )
 
     gantry_crane_logger.add_to_buffer(
-        "pwm_trolley_motor", gantry_crane.control_pwm["trolley_motor"]
+        "pwm_trolley_motor", gantry_crane_connector.control_pwm["trolley_motor"]
     )
 
     gantry_crane_logger.add_to_buffer(
-        "pwm_hoist_motor", gantry_crane.control_pwm["hoist_motor"]
+        "pwm_hoist_motor", gantry_crane_connector.control_pwm["hoist_motor"]
     )
 
     gantry_crane_logger.add_to_buffer(
         "trolley_motor_voltage",
-        gantry_crane.variables_value["trolley_motor_voltage"],
+        gantry_crane_connector.variables_value["trolley_motor_voltage"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "hoist_motor_voltage",
-        gantry_crane.variables_value["hoist_motor_voltage"],
+        gantry_crane_connector.variables_value["hoist_motor_voltage"],
     )
 
     gantry_crane_logger.add_to_buffer(
-        "trolley_position", gantry_crane.variables_value["trolley_position"]
+        "trolley_position", gantry_crane_connector.variables_value["trolley_position"]
     )
 
     gantry_crane_logger.add_to_buffer(
-        "cable_length", gantry_crane.variables_value["cable_length"]
+        "cable_length", gantry_crane_connector.variables_value["cable_length"]
     )
 
     gantry_crane_logger.add_to_buffer(
-        "sway_angle", gantry_crane.variables_value["sway_angle"]
+        "sway_angle", gantry_crane_connector.variables_value["sway_angle"]
     )
 
     gantry_crane_logger.add_to_buffer(
         "trolley_position_first_derivative",
-        gantry_crane.variables_first_derivative["trolley_position"],
+        gantry_crane_connector.variables_first_derivative["trolley_position"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "cable_length_first_derivative",
-        gantry_crane.variables_first_derivative["cable_length"],
+        gantry_crane_connector.variables_first_derivative["cable_length"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "sway_angle_first_derivative",
-        gantry_crane.variables_first_derivative["sway_angle"],
+        gantry_crane_connector.variables_first_derivative["sway_angle"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "trolley_position_second_derivative",
-        gantry_crane.variables_second_derivative["trolley_position"],
+        gantry_crane_connector.variables_second_derivative["trolley_position"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "cable_length_second_derivative",
-        gantry_crane.variables_second_derivative["cable_length"],
+        gantry_crane_connector.variables_second_derivative["cable_length"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "sway_angle_second_derivative",
-        gantry_crane.variables_second_derivative["sway_angle"],
+        gantry_crane_connector.variables_second_derivative["sway_angle"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "trolley_position_third_derivative",
-        gantry_crane.variables_third_derivative["trolley_position"],
+        gantry_crane_connector.variables_third_derivative["trolley_position"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "cable_length_third_derivative",
-        gantry_crane.variables_third_derivative["cable_length"],
+        gantry_crane_connector.variables_third_derivative["cable_length"],
     )
 
     gantry_crane_logger.add_to_buffer(
         "sway_angle_third_derivative",
-        gantry_crane.variables_third_derivative["sway_angle"],
+        gantry_crane_connector.variables_third_derivative["sway_angle"],
     )
 
 
@@ -218,10 +218,10 @@ def send_command_and_collect_data(
     mode=GantryControlModes.IDLE_MODE, trolley_pwm=0, hoist_pwm=0
 ):
     # Print current PWM
-    print("trolley motor pwm: {}, hoist motor pwm: {}".format(trolley_pwm, hoist_pwm))
+    print("Collecting data... Current PWM: trolley: {}, hoist: {}".format(trolley_pwm, hoist_pwm))
 
     # Publish motor PWM
-    gantry_crane.publish_command(mode, trolley_pwm, hoist_pwm)
+    gantry_crane_connector.publish_command(mode, trolley_pwm, hoist_pwm)
 
     # Collect data
     collect_data()
@@ -239,40 +239,49 @@ def sweep_trolley_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0):
 
     if rising:
         for pwm in range(min_pwm, max_pwm, increment):
-            print("Current PWM: {}".format(pwm))
+            # print("Current PWM: {}".format(pwm))
             start_time = time.time()
             while (
-                gantry_crane.variables_value["trolley_position"] < 0.75
+                gantry_crane_connector.variables_value["trolley_position"] < 0.75
                 and time.time() - start_time < timeout_sec
             ):
                 send_command_and_collect_data(GantryControlModes.CONTROL_MODE, pwm, 0)
 
-            if timeout_sec > 1.0:
+            if gantry_crane_connector.variables_value["trolley_position"] >= 0.75:
+                gantry_crane_connector.brake()
+                gantry_crane_connector.move_trolley_to_origin()
+
+            if timeout_sec >= 1.0:
                 timer_reset = time.time()
                 while time.time() - timer_reset < 1.0:
                     send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
-                gantry_crane.move_trolley_to_origin()
+                gantry_crane_connector.move_trolley_to_origin()
 
     else:
         for pwm in range(-min_pwm, -max_pwm, increment):
-            print("Current PWM: {}".format(pwm))
+            # print("Current PWM: {}".format(pwm))
             start_time = time.time()
             while (
-                gantry_crane.variables_value["trolley_position"] > 0.75
+                gantry_crane_connector.variables_value["trolley_position"] > 0.75
                 and time.time() - start_time < timeout_sec
             ):
                 send_command_and_collect_data(GantryControlModes.CONTROL_MODE, pwm, 0)
 
-            if timeout_sec > 1.0:
+            if gantry_crane_connector.variables_value["trolley_position"] <= 0.75:
+                gantry_crane_connector.brake()
+                gantry_crane_connector.move_trolley_to_end()
+
+            if timeout_sec >= 1.0:
                 timer_reset = time.time()
                 while time.time() - timer_reset < 1.0:
                     send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
-                gantry_crane.move_trolley_to_end()
+                gantry_crane_connector.move_trolley_to_end()
 
 
 def sweep_hoist_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0):
     min_pwm = int(abs(pwm_range[0]))
     max_pwm = int(abs(pwm_range[1]) + abs(increment))
+
     increment = int(increment)
     if increment < 0:
         rising = False
@@ -284,32 +293,40 @@ def sweep_hoist_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0):
             print("Current PWM: {}".format(pwm))
             start_time = time.time()
             while (
-                gantry_crane.variables_value["cable_length"] < 0.55
+                gantry_crane_connector.variables_value["cable_length"] < 0.60
                 and time.time() - start_time < timeout_sec
             ):
                 send_command_and_collect_data(GantryControlModes.CONTROL_MODE, 0, pwm)
+            
+            if gantry_crane_connector.variables_value["cable_length"] >= 0.60:
+                gantry_crane_connector.brake()
+                gantry_crane_connector.hoist_container_to_top()
 
-            if timeout_sec > 1.0:
+            if timeout_sec >= 1.0:
                 timer_reset = time.time()
                 while time.time() - timer_reset < 1.0:
                     send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
-                gantry_crane.hoist_container_to_top()
+                gantry_crane_connector.hoist_container_to_top()
 
     else:  # Raise container
         for pwm in range(-min_pwm, -max_pwm, increment):
             print("Current PWM: {}".format(pwm))
             start_time = time.time()
             while (
-                gantry_crane.variables_value["cable_length"] > 0.35
+                gantry_crane_connector.variables_value["cable_length"] > 0.40
                 and time.time() - start_time < timeout_sec
             ):
                 send_command_and_collect_data(GantryControlModes.CONTROL_MODE, 0, pwm)
 
-            if timeout_sec > 1.0:
+            if gantry_crane_connector.variables_value["cable_length"] <= 0.40:
+                gantry_crane_connector.brake()
+                gantry_crane_connector.hoist_container_to_bottom()
+
+            if timeout_sec >= 1.0:
                 timer_reset = time.time()
                 while time.time() - timer_reset < 1.0:
                     send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
-                gantry_crane.hoist_container_to_bottom()
+                gantry_crane_connector.hoist_container_to_bottom()
 
 
 def control_gantry_crane(
@@ -340,11 +357,12 @@ def control_gantry_crane(
         if time.time() - start_time > timeout_sec:
             result = "timeout. Final error: {}, {}.".format(
                 abs(
-                    gantry_crane.variables_value["trolley_position"]
+                    gantry_crane_connector.variables_value["trolley_position"]
                     - desired_trolley_position
                 ),
                 abs(
-                    gantry_crane.variables_value["cable_length"] - desired_cable_length
+                    gantry_crane_connector.variables_value["cable_length"]
+                    - desired_cable_length
                 ),
             )
             break
@@ -352,11 +370,12 @@ def control_gantry_crane(
         if inside_max_error and time.time() - time_inside_max_error > 5:
             result = "desired position reached. Final error: {}, {}.".format(
                 abs(
-                    gantry_crane.variables_value["trolley_position"]
+                    gantry_crane_connector.variables_value["trolley_position"]
                     - desired_trolley_position
                 ),
                 abs(
-                    gantry_crane.variables_value["cable_length"] - desired_cable_length
+                    gantry_crane_connector.variables_value["cable_length"]
+                    - desired_cable_length
                 ),
             )
             break
@@ -364,7 +383,7 @@ def control_gantry_crane(
         if desired_cable_length is None:
             if (
                 abs(
-                    gantry_crane.variables_value["trolley_position"]
+                    gantry_crane_connector.variables_value["trolley_position"]
                     - desired_trolley_position
                 )
                 < max_trolley_position_steady_state_error
@@ -377,12 +396,13 @@ def control_gantry_crane(
         else:
             if (
                 abs(
-                    gantry_crane.variables_value["trolley_position"]
+                    gantry_crane_connector.variables_value["trolley_position"]
                     - desired_trolley_position
                 )
                 < max_trolley_position_steady_state_error
                 and abs(
-                    gantry_crane.variables_value["cable_length"] - desired_cable_length
+                    gantry_crane_connector.variables_value["cable_length"]
+                    - desired_cable_length
                 )
                 < max_cable_length_steady_state_error
             ):
@@ -396,41 +416,143 @@ def control_gantry_crane(
 
 
 if __name__ == "__main__":
-    gantry_crane_model.attach_connector(gantry_crane)
+    gantry_crane_model.attach_connector(gantry_crane_connector)
     print("Gantry crane model initialized: {}".format(gantry_crane_model.get_name()))
 
-    gantry_crane_controller.attach_connector(gantry_crane)
+    gantry_crane_controller.attach_connector(gantry_crane_connector)
     gantry_crane_controller.attach_model(gantry_crane_model)
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
-    # gantry_crane.hoist_container_to_middle()
     # Initialize gantry crane
-    gantry_crane.begin()
-    # # time.sleep(5.0)
+    gantry_crane_connector.begin()
+    # gantry_crane_connector.move_trolley_to_end()
+    time.sleep(5.0)
+
+    # while True:
+            # gantry_crane_connector.move_trolley_to_middle()
+            # time.sleep(10.0)
+            # gantry_crane_connector.move_trolley_to_end()
+            # time.sleep(10.0)
+            # gantry_crane_connector.move_trolley_to_origin()
+            # time.sleep(10.0)
+            # gantry_crane_connector.hoist_container_to_top()
+            # time.sleep(10.0)
+            # gantry_crane_connector.hoist_container_to_bottom()
+            # time.sleep(10.0)
+            # gantry_crane_connector.hoist_container_to_middle()
+            # time.sleep(10.0)
 
     try:
-        while True:
-            # gantry_crane.move_trolley_to_middle()
-            # time.sleep(10.0)
-            # gantry_crane.move_trolley_to_end()
-            # time.sleep(10.0)
-            # gantry_crane.move_trolley_to_origin()
-            # time.sleep(10.0)
-            gantry_crane.hoist_container_to_top()
-            time.sleep(10.0)
-            gantry_crane.hoist_container_to_bottom()
-            time.sleep(10.0)
-            gantry_crane.hoist_container_to_middle()
-            time.sleep(10.0)
+        # Begin logger timer
+        gantry_crane_logger.reset_timer()
 
-        # # Begin logger timer
-        # gantry_crane_logger.reset_timer()
+        # for i in range(5):
+        #     gantry_crane_connector.move_trolley_to_origin()
+        #     gantry_crane_connector.idle()
+        #     time.sleep(5.0)
+        #     # Sweep trolley motor PWM
+        #     gantry_crane_logger.reset_timer()
+        #     sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
+        #     gantry_crane_logger.write_buffers_to_excel(
+        #         gantry_crane_controller.get_name()
+        #         + "_rising_sweep_trolley_data_1_increment.xlsx"
+        #     )
+        #     gantry_crane_logger.reset_buffers()
 
-        # Sweep trolley motor PWM
-        # sweep_trolley_motor_pwm(pwm_range=[0, 850], increment=1, timeout_sec=0.1)
+        # for i in range(5):
+        #     gantry_crane_connector.move_trolley_to_end()
+        #     gantry_crane_connector.idle()
+        #     time.sleep(5.0)
+        #     # Sweep trolley motor PWM
+        #     gantry_crane_logger.reset_timer()
+        #     sweep_trolley_motor_pwm(pwm_range=[0, -700], increment=-1, timeout_sec=0.1)
+        #     gantry_crane_logger.write_buffers_to_excel(
+        #         gantry_crane_controller.get_name()
+        #         + "_falling_sweep_trolley_data_1_increment.xlsx"
+        #     )
+        #     gantry_crane_logger.reset_buffers()
 
-        # gantry_crane.move_trolley_to_origin()
-        # time.sleep(5.0)
+        # for i in range(5):
+        #     gantry_crane_connector.move_trolley_to_origin()
+        #     gantry_crane_connector.idle()
+        #     time.sleep(5.0)
+        #     # Sweep trolley motor PWM
+        #     gantry_crane_logger.reset_timer()
+        #     sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=10, timeout_sec=2.0)
+        #     gantry_crane_logger.write_buffers_to_excel(
+        #         gantry_crane_controller.get_name()
+        #         + "_rising_sweep_trolley_data_10_increment.xlsx"
+        #     )
+        #     gantry_crane_logger.reset_buffers()
+
+        # for i in range(5):
+        #     gantry_crane_connector.move_trolley_to_end()
+        #     gantry_crane_connector.idle()
+        #     time.sleep(5.0)
+        #     # Sweep trolley motor PWM
+        #     gantry_crane_logger.reset_timer()
+        #     sweep_trolley_motor_pwm(pwm_range=[0, -700], increment=-10, timeout_sec=2.0)
+        #     gantry_crane_logger.write_buffers_to_excel(
+        #         gantry_crane_controller.get_name()
+        #         + "_falling_sweep_trolley_data_10_increment.xlsx"
+        #     )
+        #     gantry_crane_logger.reset_buffers()
+
+        for i in range(5):
+            gantry_crane_connector.move_trolley_to_middle()
+            gantry_crane_connector.hoist_container_to_top()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
+
+        for i in range(5):
+            gantry_crane_connector.move_trolley_to_middle()
+            gantry_crane_connector.hoist_container_to_bottom()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, -700], increment=-1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_falling_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
+
+        for i in range(5):
+            gantry_crane_connector.move_trolley_to_middle()
+            gantry_crane_connector.hoist_container_to_top()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, 700], increment=10, timeout_sec=2.0)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_hoist_data_10_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
+
+        for i in range(5):
+            gantry_crane_connector.move_trolley_to_middle()
+            gantry_crane_connector.hoist_container_to_bottom()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, -700], increment=-10, timeout_sec=2.0)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_falling_sweep_hoist_data_10_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
         # Sweep hoist motor PWM
         # sweep_hoist_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0)
@@ -469,15 +591,15 @@ if __name__ == "__main__":
         # )
         # print("Third position reached. Result: {}".format(result))
 
-        gantry_crane_logger.write_buffers_to_excel(
-            gantry_crane_controller.get_name() + "_sweep_trolley_data.xlsx"
-        )
+        # gantry_crane_logger.write_buffers_to_excel(
+        #     gantry_crane_controller.get_name() + "_sweep_trolley_data.xlsx"
+        # )
 
-        create_plot()
+        # create_plot()
 
     except KeyboardInterrupt:
         pass
 
-    gantry_crane.move_trolley_to_origin()
-    gantry_crane.hoist_container_to_top()
+    gantry_crane_connector.move_trolley_to_origin()
+    gantry_crane_connector.hoist_container_to_top()
     rclpy.shutdown()

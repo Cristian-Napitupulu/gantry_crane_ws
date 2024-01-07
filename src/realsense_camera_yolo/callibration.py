@@ -11,9 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Points from measurement with realsense camera
-point_A = np.array([0.0234, -0.026, 0.4928])
-point_B = np.array([0.056, -0.029, 0.492])
-point_C = np.array([0.029, -0.131, 0.505])
+point_A = np.array([0.038, -0.050, 0.478])
+point_B = np.array([0.069, -0.049, 0.477])
+point_C = np.array([0.038, -0.150, 0.489])
 # Print points
 for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
     print(f"Point {label}:", tuple(point))

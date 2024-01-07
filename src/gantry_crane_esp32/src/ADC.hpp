@@ -68,7 +68,10 @@ void analogToDigitalConverterInit()
 float readChannel(ADS1115_MUX channel) {
   float voltage = 0.0;
   analogToDigitalConverter.setCompareChannels(channel);
-  voltage = analogToDigitalConverter.getResult_V(); 
+  voltage = analogToDigitalConverter.getResult_V();
+  if (voltage < 0.0) {
+    voltage = 0.0;
+  }
   return voltage;
 }
 

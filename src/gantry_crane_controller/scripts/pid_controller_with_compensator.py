@@ -15,6 +15,17 @@ from control.matlab import tf as trf
 
 import pandas as pd
 
+from pyit2fls import (
+    IT2FS_Gaussian_UncertStd,
+    IT2FLS,
+    min_t_norm,
+    product_t_norm,
+    max_s_norm,
+    IT2FS_plot,
+)
+
+from numpy import array, linspace
+
 
 GANTRY_CRANE_NODE_NAME = "gantry_crane_control_system"
 CONTROLLER_NODE_NAME = "sliding_mode_controller"
@@ -39,6 +50,7 @@ DESIRED_TROLLEY_POSITION = 1.0
 DESIRED_CABLE_LENGTH = 0.5
 
 MAX_PWM = 1023
+
 
 
 class GantryCraneSystem(Node):
@@ -197,6 +209,75 @@ class GantryCraneSystem(Node):
         return (current_value - last_value) / delta_time
 
 
+def fuzzytype2(e,de,ul):
+    domain=linspace(-2,2,101)
+    NE = IT2FS_Gaussian_UncertStd(domain, [-1.0, 0.2, 0.2, 1.0])
+    ZE = IT2FS_Gaussian_UncertStd(domain, [0.0, 0.2, 0.2, 1.0])
+    PO = IT2FS_Gaussian_UncertStd(domain, [1.0, 0.2, 0.2, 1.0])
+
+
+    domain=linspace(-3,3,101)
+    NB = IT2FS_Gaussian_UncertStd(domain, [-2.0, 0.2, 0.1, 1.0])
+    NM = IT2FS_Gaussian_UncertStd(domain, [-1.33, 0.2, 0.1, 1.0])
+    NS = IT2FS_Gaussian_UncertStd(domain, [-0.67, 0.2, 0.1, 1.0])
+    ZO = IT2FS_Gaussian_UncertStd(domain, [0, 0.1, 0.1, 1.0])
+    PS = IT2FS_Gaussian_UncertStd(domain, [0.67, 0.2, 0.1, 1.0])
+    PM = IT2FS_Gaussian_UncertStd(domain, [1.33, 0.2, 0.1, 1.0])
+    PB = IT2FS_Gaussian_UncertStd(domain, [2.0,0.2, 0.1, 1.0])
+
+    it2fls = IT2FLS()
+    it2fls.add_input_variable("e")
+    it2fls.add_input_variable("de")
+    it2fls.add_input_variable("ul")
+    it2fls.add_output_variable("u")
+
+    it2fls.add_rule([("e", NE), ("de", NE), ("ul", NE)], [("u", PB)])
+    it2fls.add_rule([("e", NE), ("de", NE), ("ul", ZE)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", NE), ("ul", PO)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", ZE), ("ul", NE)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", ZE), ("ul", ZE)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", ZE), ("ul", PO)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", PO), ("ul", NE)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", PO), ("ul", ZE)], [("u", PM)])
+    it2fls.add_rule([("e", NE), ("de", PO), ("ul", PO)], [("u", PM)])
+
+    it2fls.add_rule([("e", ZE), ("de", NE), ("ul", NE)], [("u", PM)])
+    it2fls.add_rule([("e", ZE), ("de", NE), ("ul", ZE)], [("u", PM)])
+    it2fls.add_rule([("e", ZE), ("de", NE), ("ul", PO)], [("u", PS)])
+    it2fls.add_rule([("e", ZE), ("de", ZE), ("ul", NE)], [("u", PS)])
+    it2fls.add_rule([("e", ZE), ("de", ZE), ("ul", ZE)], [("u", ZO)])
+    it2fls.add_rule([("e", ZE), ("de", ZE), ("ul", PO)], [("u", NS)])
+    it2fls.add_rule([("e", ZE), ("de", PO), ("ul", NE)], [("u", NS)])
+    it2fls.add_rule([("e", ZE), ("de", PO), ("ul", ZE)], [("u", NM)])
+    it2fls.add_rule([("e", ZE), ("de", PO), ("ul", PO)], [("u", NM)])
+
+    it2fls.add_rule([("e", PO), ("de", NE), ("ul", NE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", NE), ("ul", ZE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", NE), ("ul", PO)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", ZE), ("ul", NE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", ZE), ("ul", ZE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", ZE), ("ul", PO)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", PO), ("ul", NE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", PO), ("ul", ZE)], [("u", NM)])
+    it2fls.add_rule([("e", PO), ("de", PO), ("ul", PO)], [("u", NB)])
+
+    e = max(-1.5, min(1.5, e))
+    de = max(-1.5, min(1.5, de))
+    ul = max(-1.5, min(1.5, ul))
+
+    c, TR = it2fls.evaluate(
+            {"e": e, "de": de, "ul": ul},
+            product_t_norm,
+            max_s_norm,
+            domain,
+            method="Centroid",
+            algorithm="EKM",
+        )
+
+    u = (TR["u"][0] + TR["u"][1]) / 2
+
+    return u
+
 class Controller(Node):
     def __init__(self):
         # Initialize node
@@ -218,7 +299,8 @@ class Controller(Node):
         self.listxref = []
         self.listlref = []
 
-        self.sCS1=0
+        self.lxref_u=0
+        self.lex = 0
         # Initialize variables
 
     def packValues(self, mode, pwm_trolley, pwm_hoist):
@@ -335,7 +417,7 @@ class Controller(Node):
 
     def get_lyapunov_control_input(self, gantry_crane, x_ref, l_ref):
         Kpx = 7.36#7.36  # 9.89
-        Kdx = 3.71#5.01  # 2.87
+        Kdx = 5.01#5.01  # 2.87
         Kpl = 14.18  # 10
         Kdl = 8.98  # 3.13
        
@@ -354,18 +436,26 @@ class Controller(Node):
 
         d2ex = gantry_crane.variables_second_derivative["trolley_position"] 
 
-        # if abs(ex) < 0.01:
-        #    Kdx=0.0005 
+        diff_ex = ex - self.lex
+        xref_u = fuzzytype2(ex,diff_ex,self.lxref_u)
+        x_ref=x_ref+xref_u
 
-        print("kdx: ", Kdx)
+
+        nex=x-x_ref
+
+        print(f"nex: {nex}, ex: {ex},  xref_u: {xref_u}, x_ref: {x_ref}, lxref_u: {self.lxref_u}, diff_ex: {diff_ex}")
+        
+        #print("kdx: ", Kdx)
         # if abs(ex)<0.05:
         #     CS1=abs(CS1)
         # Control Signal Pos
-        CS1 = -Kpx * ex - Kdx * dex 
+        CS1 = -Kpx * nex - Kdx * dex 
+        #CS1 = -Kpx * nex - Kdx * ((ex - self.lex)/0.01 )
         # Control Signal CLength
         CS2 = -Kpl * el - Kdl * dell
 
-        
+        self.lxref_u=xref_u
+        self.lex = ex
 
         print(f"Control_X: {CS1}, Control_L={CS2}")
         """
@@ -373,22 +463,18 @@ class Controller(Node):
             self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
         )
         """
-        if (abs(CS1-self.sCS1) < 0.4) and (np.sign(CS1)!=np.sign(self.sCS1)):
-            CS1=np.sign(self.sCS1)*abs(CS1)
         if CS1 > 0:
-            control_input1 = int(self.tanh_interpolation(CS1, 0, 570, 10, 700))
-            #control_input1 = int(self.linear_interpolation(CS1, 0, 570, 20, 700))
+            #control_input1 = int(self.tanh_interpolation(CS1, 0, 0, 5, 700))
+            control_input1 = int(self.linear_interpolation(CS1, 0, 500, 5, 700))
         elif CS1<0:
-            control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 570, 10, 700)))
-            #control_input1 = -1*int(self.linear_interpolation(-CS1, 0, 570, 20, 700))
+            #control_input1 = -1 * (int(self.tanh_interpolation(-CS1, 0, 0, 5, 700)))
+            control_input1 = -1*int(self.linear_interpolation(-CS1, 0, 500, 5, 700))
         else:
             control_input1=0
-        
-        self.sCS1=CS1
 
         # if abs(control_input1) > 570 and abs(control_input1) <= 577:
         #     control_input1 = np.sign(control_input1) * 565
-            #control_input1 = int(self.linear_interpolation(CS1, 0, 570, 20, 700))
+        #     #control_input1 = int(self.linear_interpolation(CS1, 0, 570, 20, 700))
         
 
         if CS2 > 0:
@@ -459,7 +545,7 @@ if __name__ == "__main__":
             # )
 
             # Lyapunov Control Action
-            x_ref = 0.25
+            x_ref = 1.25
             l_ref = 0.5
             (
                 trolley_motor_pwm,

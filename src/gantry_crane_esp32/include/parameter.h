@@ -43,11 +43,11 @@
 */
 
 // Operating PWM values for trolley motor`
-#define TROLLEY_MOTOR_PWM_MAX 1023
+#define TROLLEY_MOTOR_PWM_MAX 850
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Operating PWM values for hoist motor
-#define HOIST_MOTOR_PWM_MAX 1023
+#define HOIST_MOTOR_PWM_MAX 850
 #define HOIST_MOTOR_PWM_MIN 0
 
 #define TROLLEY_MOTOR_FIND_ORIGIN_PWM 605
@@ -61,8 +61,8 @@
 #define POSITION_MAX_VALUE 1.5
 #define POSITION_MIN_VALUE 0
 
-#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
-#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 5
+#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 5
 
 /*Pin definitions
 * When choosing a pin, make sure it is not conflicting with other pins.

@@ -52,6 +52,7 @@ void checkLimitSwitch()
   // Check limit switch
   if (limitSwitchEncoderSide.getState() == LOW)
   {
+    encoderTrolley.reset();
     limitSwitchEncoderSideState = true;
     if (trolleyMotorPWM < 0)
     {
@@ -65,6 +66,7 @@ void checkLimitSwitch()
 
   if (limitSwitchTrolleyMotorSide.getState() == LOW)
   {
+    encoderTrolley.setPulse(ENCODER_MAX_VALUE);
     limitSwitchTrolleyMotorSideState = true;
     if (trolleyMotorPWM > 0)
     {

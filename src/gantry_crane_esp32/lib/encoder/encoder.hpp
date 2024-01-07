@@ -9,13 +9,18 @@ class Encoder {
         void begin();
         void update();
         int32_t getPulse();
+        int32_t getPulsePerSecond();
         void reset();
+        void setPulse(int32_t pulse);
         uint8_t getChannelA();
         
     private:
         uint8_t channelA;
         uint8_t channelB;
-        volatile uint32_t pulses;
+        volatile int32_t pulses;
+        volatile int32_t lastPulses;
+        volatile int32_t pulsePerSecond;
+        volatile unsigned long lastUpdateTime;
 };
 
 

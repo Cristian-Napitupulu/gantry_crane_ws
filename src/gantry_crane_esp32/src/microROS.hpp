@@ -168,14 +168,17 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   if (timer != NULL)
   {
     float trolleyMotorVoltage = trolleyMotorVoltageMovingAverage.getMovingAverage() * 3.1694367498;
-    if (trolleyMotorPWM < 0 || lastTrolleyMotorVoltage < 0.0)
+    if (trolleyMotorPWM < 0 || encoderTrolley.getPulsePerSecond() < 0 || lastTrolleyMotorVoltage < 0.0)
     {
       trolleyMotorVoltage = -trolleyMotorVoltage;
+    }
+    if (fabs(trolleyMotorVoltage ) < 0.0001){
+      trolleyMotorVoltage = 0;
     }
     trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
     lastTrolleyMotorVoltage = trolleyMotorVoltage;
-    if (trolleyMotorPWM == 0 && lastTrolleyMotorVoltage > -0.5){
+    if (trolleyMotorPWM >= 0 || lastTrolleyMotorVoltage > -0.5){
       lastTrolleyMotorVoltage = 0;
     }
   }
@@ -192,10 +195,13 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
     {
       hoistMotorVoltage = -hoistMotorVoltage;
     }
+    if (fabs(hoistMotorVoltage) < 0.0001){
+      hoistMotorVoltage = 0;
+    }
     hoistMotorVoltageMessage.data = hoistMotorVoltage;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
     lastHoistMotorVoltage = hoistMotorVoltage;
-    if (hoistMotorPWM == 0 && lastHoistMotorVoltage > -0.5){
+    if (hoistMotorPWM >= 0 || lastHoistMotorVoltage > -0.5){
       lastHoistMotorVoltage = 0;
     }
   }

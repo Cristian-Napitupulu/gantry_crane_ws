@@ -10,6 +10,7 @@ class Logger:
         self.parent_folder_path = parent_folder_path
         self.buffers = {}
         self.reset_timer()
+        self.create_folder()
 
     def add_to_buffer(self, variable_name, value):
         if variable_name not in self.buffers:
@@ -21,11 +22,27 @@ class Logger:
         self.folder_path = os.path.join(self.parent_folder_path, folder_name)
         os.makedirs(self.folder_path)
 
-    def write_buffers_to_excel(self, file_name):
-        self.create_folder()
+    def write_buffers_to_excel(self, file_name, sheet_name='Sheet1'):
         file_path = os.path.join(self.folder_path, file_name)
-        data = pd.DataFrame(self.buffers)
-        data.to_excel(file_path)
+        
+        # Check if the file already exists
+        if os.path.isfile(file_path):
+            # If it exists, open the Excel file in append mode
+            with pd.ExcelWriter(file_path, engine='openpyxl', mode='a') as writer:
+                existing_sheets = writer.book.sheetnames
+                
+                # Generate a new sheet name if the specified one already exists
+                new_sheet_name = sheet_name
+                i = 1
+                while new_sheet_name in existing_sheets:
+                    new_sheet_name = f'{sheet_name}_{i}'
+                    i += 1
+                
+                # Write the DataFrame to the new sheet
+                pd.DataFrame(self.buffers).to_excel(writer, index=False, sheet_name=new_sheet_name)
+        else:
+            # If the file doesn't exist, create a new Excel file with the specified sheet name
+            pd.DataFrame(self.buffers).to_excel(file_path, index=False, sheet_name=sheet_name)
 
     def create_plot(self, variable_name, x_variable_name, y_variable_name):
         x = self.buffers[x_variable_name]
@@ -43,3 +60,6 @@ class Logger:
 
     def get_time_sec(self):
         return time.time() - self.start_time
+    
+    def reset_buffers(self):
+        self.buffers = {}

@@ -707,20 +707,32 @@ if __name__ == "__main__":
         while True:
             time_now = time.time() - start_time
             # Update matrices
-            gantry_crane.update_matrices()
-            (
-                trolley_motor_control_input,
-                hoist_motor_control_input,
-            ) = slidingModeController.get_control_input(
-                gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-            )
+            # gantry_crane.update_matrices()
+            # (
+            #     trolley_motor_control_input,
+            #     hoist_motor_control_input,
+            # ) = slidingModeController.get_control_input(
+            #     gantry_crane, DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
+            # )
 
-            trolley_motor_pwm = slidingModeController.convert_to_pwm(trolley_motor_control_input)
-            print("trolley_motor_pwm: ",trolley_motor_pwm)
-            hoist_motor_pwm = slidingModeController.convert_to_pwm(hoist_motor_control_input)
-            
-            # trolley_motor_pwm = 600
-            hoist_motor_pwm = 0
+            # trolley_motor_pwm = slidingModeController.convert_to_pwm(trolley_motor_control_input)
+            # print("trolley_motor_pwm: ",trolley_motor_pwm)
+            # hoist_motor_pwm = slidingModeController.convert_to_pwm(hoist_motor_control_input)
+
+            # if gantry_crane.variables_value["trolley_position"] <1.0:
+            #     trolley_motor_pwm = 570
+            # elif gantry_crane.variables_value["trolley_position"] >1.0:
+            #     trolley_motor_pwm = -570
+            # else:
+            #     trolley_motor_pwm = 0
+            if gantry_crane.variables_value["cable_length"] <0.5:
+                hoist_motor_pwm = 590
+            elif gantry_crane.variables_value["cable_length"] >0.6:
+                hoist_motor_pwm = -700
+            else:
+                hoist_motor_pwm = 0   
+            #hoist_motor_pwm = 0
+            #trolley_motor_pwm = 0
             gantryMode = CONTROL_MODE
 
             slidingModeController.publish_motor_pwm(

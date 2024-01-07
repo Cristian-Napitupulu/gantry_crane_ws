@@ -23,7 +23,7 @@ MAX_TROLLEY_POSITION = 1.5  # Maximum trolley position in meters
 MIN_TROLLEY_POSITION = 0.0  # Minimum trolley position in meters
 
 MAX_CABLE_LENGTH = 0.65  # Maximum cable length in meters
-MIN_CABLE_LENGTH = 0.25  # Minimum cable length in meters
+MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
 MODES_TIMEOUT = 5.0  # Timeout for modes in seconds
 
@@ -366,6 +366,7 @@ class GantryCraneConnector(Node):
         self.wait_for_subscribers()
         self.reset_variable()
         self.move_trolley_to_origin()
+        self.hoist_container_to_middle()
         self.idle()
 
         self.get_logger().info("Gantry crane connector ready")
@@ -379,14 +380,12 @@ class GantryCraneConnector(Node):
 
     def wait_for_messages(self):
         self.get_logger().info("Waiting for messages...")
-        while (
-            self.variables_value["trolley_position"] is None
-            or self.variables_value["cable_length"] is None
-            or self.variables_value["sway_angle"] is None
-            or self.variables_value["trolley_motor_voltage"] is None
-            or self.variables_value["hoist_motor_voltage"] is None
-        ):
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+        for variable_name in self.variables_value:
+            self.get_logger().info("Waiting for " + variable_name + " messages...")
+            while self.variables_value[variable_name] is None:
+                rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+                time.sleep(0.1)
+            self.get_logger().info(variable_name + " messages received")
         self.get_logger().info("All messages received")
 
     def move_trolley_to_origin(self):
@@ -459,25 +458,29 @@ class GantryCraneConnector(Node):
         rclpy.spin_once(self, timeout_sec=self.spin_timeout)
 
     def brake(self, brake_trolley=True, brake_hoist=True):
-        if brake_trolley:
-            trolley_pwm_flag = GantryControlModes.PWM_BRAKE_FLAG
-        else:
-            trolley_pwm_flag = 0
+        self.get_logger().info("Braking...")
+        for i in range(10):
+            if brake_trolley:
+                trolley_pwm_flag = GantryControlModes.PWM_BRAKE_FLAG
+            else:
+                trolley_pwm_flag = 0
 
-        if brake_hoist:
-            hoist_pwm_flag = GantryControlModes.PWM_BRAKE_FLAG
-        else:
-            hoist_pwm_flag = 0
+            if brake_hoist:
+                hoist_pwm_flag = GantryControlModes.PWM_BRAKE_FLAG
+            else:
+                hoist_pwm_flag = 0
 
-        self.publish_command(
-            GantryControlModes.CONTROL_MODE, trolley_pwm_flag, hoist_pwm_flag
-        )
-        rclpy.spin_once(self, timeout_sec=self.spin_timeout)
-        time.sleep(0.1)
+            self.publish_command(
+                GantryControlModes.CONTROL_MODE, trolley_pwm_flag, hoist_pwm_flag
+            )
+            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
 
     def idle(self):
-        self.publish_command(GantryControlModes.IDLE_MODE, 0, 0)
-        rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+        self.get_logger().info("Idling...")
+        for i in range(10):
+            self.publish_command(GantryControlModes.IDLE_MODE, 0, 0)
+            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            time.sleep(0.1)
 
     def hoist_container_to_top(self):
         self.initialize_variables()

@@ -11,9 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Points from measurement with realsense camera
-point_A = np.array([0.038, -0.050, 0.478])
-point_B = np.array([0.069, -0.049, 0.477])
-point_C = np.array([0.038, -0.150, 0.489])
+point_A = np.array([0.018, -0.055, 0.550])
+point_B = np.array([0.048, -0.055, 0.550])
+point_C = np.array([0.020, -0.156, 0.558])
 # Print points
 for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
     print(f"Point {label}:", tuple(point))
@@ -75,7 +75,6 @@ line_direction_vector = vector_AC
 # Calculate which point on the line that is on the normal plane
 # Substitute the line equation into the normal plane equation
 # And solve for t
-
 t = -normal_plane_D / (np.dot(normal_plane_vector, line_direction_vector))
 # print("t: {}".format(t))
 

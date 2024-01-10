@@ -27,8 +27,8 @@ MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
 MODES_TIMEOUT = 5.0  # Timeout for modes in seconds
 
-HOIST_RISE_PWM = 750  # PWM for hoist motor to rise the container
-HOIST_LOWER_PWM = 600  # PWM for hoist motor to lower the container
+HOIST_RISE_PWM = 695  # PWM for hoist motor to rise the container
+HOIST_LOWER_PWM = 515  # PWM for hoist motor to lower the container
 
 
 class GantryControlModes:
@@ -311,6 +311,9 @@ class GantryCraneConnector(Node):
 
         self.get_logger().info("Gantry crane variables reset")
 
+    def update(self):
+        rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+
     def publish_command(
         self, gantry_mode, input_pwm_trolley_motor, input_pwm_hoist_motor
     ):
@@ -321,7 +324,7 @@ class GantryCraneConnector(Node):
             gantry_mode, input_pwm_trolley_motor, input_pwm_hoist_motor
         )
         self.motor_pwm_publisher.publish(message)
-        rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+        self.update()
 
     def packValues(
         self, mode=GantryControlModes.IDLE_MODE, trolley_motor_pwm=0, pwm_hoist_motor=0
@@ -361,12 +364,31 @@ class GantryCraneConnector(Node):
         )
         return packed_value
 
-    def begin(self):
+    def begin(self, slide_to_position="origin", hoist_to_position="middle"):
         self.wait_for_messages()
         self.wait_for_subscribers()
         self.reset_variable()
-        self.move_trolley_to_origin()
-        self.hoist_container_to_middle()
+
+        if slide_to_position == "origin":
+            self.move_trolley_to_origin()
+        elif slide_to_position == "middle":
+            self.move_trolley_to_middle()
+        elif slide_to_position == "end":
+            self.move_trolley_to_end()
+        else:
+            self.get_logger().info("Invalid trolley position")
+            return False
+        
+        if hoist_to_position == "top":
+            self.hoist_container_to_top()
+        elif hoist_to_position == "middle":
+            self.hoist_container_to_middle()
+        elif hoist_to_position == "bottom":
+            self.hoist_container_to_bottom()
+        else:
+            self.get_logger().info("Invalid container position")
+            return False
+        
         self.idle()
 
         self.get_logger().info("Gantry crane connector ready")
@@ -375,7 +397,7 @@ class GantryCraneConnector(Node):
     def wait_for_subscribers(self):
         self.get_logger().info("Waiting for subscribers...")
         while self.motor_pwm_publisher.get_subscription_count() == 0:
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
         self.get_logger().info("All subscribers ready")
 
     def wait_for_messages(self):
@@ -383,7 +405,7 @@ class GantryCraneConnector(Node):
         for variable_name in self.variables_value:
             self.get_logger().info("Waiting for " + variable_name + " messages...")
             while self.variables_value[variable_name] is None:
-                rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+                self.update()
                 time.sleep(0.1)
             self.get_logger().info(variable_name + " messages received")
         self.get_logger().info("All messages received")
@@ -396,7 +418,7 @@ class GantryCraneConnector(Node):
             or time.time() - start_time < MODES_TIMEOUT
         ):
             self.publish_command(GantryControlModes.MOVE_TO_ORIGIN_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.5)
 
         return True
@@ -413,7 +435,7 @@ class GantryCraneConnector(Node):
             or time.time() - start_time < MODES_TIMEOUT
         ):
             self.publish_command(GantryControlModes.MOVE_TO_MIDDLE_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.5)
 
         return True
@@ -426,7 +448,7 @@ class GantryCraneConnector(Node):
             or time.time() - start_time < MODES_TIMEOUT
         ):
             self.publish_command(GantryControlModes.MOVE_TO_END_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.5)
 
         return True
@@ -436,7 +458,7 @@ class GantryCraneConnector(Node):
         start_time = time.time()
         while time.time() - start_time < MODES_TIMEOUT:
             self.publish_command(GantryControlModes.LOCK_CONTAINER_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.1)
 
         return True
@@ -446,7 +468,7 @@ class GantryCraneConnector(Node):
         start_time = time.time()
         while time.time() - start_time < MODES_TIMEOUT:
             self.publish_command(GantryControlModes.UNLOCK_CONTAINER_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.1)
 
         return True
@@ -455,7 +477,7 @@ class GantryCraneConnector(Node):
         self.publish_command(
             GantryControlModes.CONTROL_MODE, trolley_motor_pwm, hoist_motor_pwm
         )
-        rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+        self.update()
 
     def brake(self, brake_trolley=True, brake_hoist=True):
         self.get_logger().info("Braking...")
@@ -473,13 +495,13 @@ class GantryCraneConnector(Node):
             self.publish_command(
                 GantryControlModes.CONTROL_MODE, trolley_pwm_flag, hoist_pwm_flag
             )
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
 
     def idle(self):
         self.get_logger().info("Idling...")
         for i in range(10):
             self.publish_command(GantryControlModes.IDLE_MODE, 0, 0)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
             time.sleep(0.1)
 
     def hoist_container_to_top(self):
@@ -488,7 +510,7 @@ class GantryCraneConnector(Node):
         self.get_logger().info("Hoisting container to top...")
         start_time = time.time()
         while (
-            abs(self.variables_value["cable_length"] - MIN_CABLE_LENGTH) > 0.0025
+            abs(self.variables_value["cable_length"] - MIN_CABLE_LENGTH) > 0.001
             or time.time() - start_time < MODES_TIMEOUT
         ):
             error = self.variables_value["cable_length"] - MIN_CABLE_LENGTH
@@ -497,7 +519,9 @@ class GantryCraneConnector(Node):
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
+
+        self.brake(brake_trolley=False, brake_hoist=True)
 
         return True
 
@@ -511,7 +535,7 @@ class GantryCraneConnector(Node):
                 self.variables_value["cable_length"]
                 - (MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2
             )
-            > 0.0025
+            > 0.001
             or time.time() - start_time < MODES_TIMEOUT
         ):
             error = (
@@ -523,7 +547,9 @@ class GantryCraneConnector(Node):
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
+
+        self.brake(brake_trolley=False, brake_hoist=True)
 
         return True
 
@@ -533,7 +559,7 @@ class GantryCraneConnector(Node):
         self.get_logger().info("Hoisting container to bottom...")
         start_time = time.time()
         while (
-            abs(self.variables_value["cable_length"] - MAX_CABLE_LENGTH) > 0.0025
+            abs(self.variables_value["cable_length"] - MAX_CABLE_LENGTH) > 0.001
             or time.time() - start_time < MODES_TIMEOUT
         ):
             error = self.variables_value["cable_length"] - MAX_CABLE_LENGTH
@@ -542,6 +568,8 @@ class GantryCraneConnector(Node):
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            rclpy.spin_once(self, timeout_sec=self.spin_timeout)
+            self.update()
+
+        self.brake(brake_trolley=False, brake_hoist=True)
 
         return True

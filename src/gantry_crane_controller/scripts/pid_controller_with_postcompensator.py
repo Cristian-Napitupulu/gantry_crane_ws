@@ -210,12 +210,12 @@ def fuzzytype2(u,e,tet):
     B1 = IT2FS_Gaussian_UncertStd(domain1, [5, 1.5, 0.3, 1.])
     
     domain2=linspace(0,1,100)
-    Z2 = IT2FS_Gaussian_UncertStd(domain2, [0, 0.004, 0.001, 1.])
+    Z2 = IT2FS_Gaussian_UncertStd(domain2, [0, 0.0030, 0.001, 1.])
     S2 = IT2FS_Gaussian_UncertStd(domain2, [0.4, 0.2, 0.1, 1.])
     B2 = IT2FS_Gaussian_UncertStd(domain2, [1, 0.2, 0.1, 1.])
 
     domain3 = linspace(0., 1.0, 100)
-    Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.05, 0.05, 1.])
+    Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.01, 0.01, 1.])
     B3 = IT2FS_Gaussian_UncertStd(domain3, [1, 0.5, 0.1, 1.])
 
     myIT2FLS = TSK(product_t_norm, max_s_norm)
@@ -398,20 +398,20 @@ class Controller(Node):
         diff_ex = ex - self.lex
 
         # Control Signal Pos
-        CS1_ = -Kpx * ex - Kdx * dex 
+        CS1 = -Kpx * ex - Kdx * dex 
         #CS1 = -Kpx * nex - Kdx * ((ex - self.lex)/0.01 )
-        print(f"Control_X: {CS1_},e_x{ex}, tet={tetha}")
-        ufuzz=fuzzytype2(CS1_,ex,tetha)
+        print(f"Control_X: {CS1},e_x{ex}, tet={tetha}")
+        ufuzz=fuzzytype2(CS1,ex,tetha)
         
         
-        CS1= np.sign(CS1_)*ufuzz
+        CS1_= np.sign(CS1)*ufuzz
         # Control Signal CLength
         CS2 = -Kpl * el - Kdl * dell
 
 
         self.lex = ex
 
-        print(f"Control_X: {CS1},Control_fX{ufuzz}, Control_L={CS2}")
+        print(f"Control_X: {CS1_},Control_fX{ufuzz}, Control_L={CS2}")
         """
         control_input1 = int(
             self.linear_interpolation(control_now, -12.0, -MAX_PWM, 12, MAX_PWM)
@@ -428,9 +428,9 @@ class Controller(Node):
 
         # if abs(control_input1) > 570 and abs(control_input1) <= 577:
         #     control_input1 = np.sign(control_input1) * 565
-        #     #control_input1 = int(self.linear_interpolation(CS1, 0, 570, 20, 700))
+        #     #control_input1 = int(self.line ar_interpolation(CS1, 0, 570, 20, 700))
         
-        control_input1=int(CS1)
+        control_input1=int(CS1_)
         if CS2 > 0:
             control_input2 = int(self.tanh_interpolation(CS2, 0, 250, 5, 500))
         else:
@@ -499,7 +499,7 @@ if __name__ == "__main__":
             # )
 
             # Lyapunov Control Action
-            x_ref = 1.0
+            x_ref = 1
             l_ref = 0.5
             (
                 trolley_motor_pwm,

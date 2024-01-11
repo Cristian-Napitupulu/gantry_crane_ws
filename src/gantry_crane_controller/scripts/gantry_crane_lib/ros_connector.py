@@ -392,7 +392,7 @@ class GantryCraneConnector(Node):
         self.idle()
 
         self.get_logger().info("Gantry crane connector ready")
-        time.sleep(1)
+        time.sleep(2.0)
 
     def wait_for_subscribers(self):
         self.get_logger().info("Waiting for subscribers...")

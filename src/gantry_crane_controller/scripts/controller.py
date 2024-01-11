@@ -503,61 +503,62 @@ if __name__ == "__main__":
         #     )
         #     gantry_crane_logger.reset_buffers()
 
-        # for i in range(5):
-        #     gantry_crane_connector.move_trolley_to_middle()
-        #     gantry_crane_connector.hoist_container_to_top()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_hoist_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(5):            
+            gantry_crane_connector.hoist_container_to_top()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, 800], increment=1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
-        # for i in range(5):
-        #     gantry_crane_connector.move_trolley_to_middle()
-        #     gantry_crane_connector.hoist_container_to_bottom()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, -700], increment=-1, timeout_sec=0.1)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_falling_sweep_hoist_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
 
-        # for i in range(5):
-        #     gantry_crane_connector.move_trolley_to_middle()
-        #     gantry_crane_connector.hoist_container_to_top()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, 700], increment=10, timeout_sec=2.0)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_hoist_data_10_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(5):
+            gantry_crane_connector.hoist_container_to_bottom()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, -800], increment=-1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_falling_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
-        # for i in range(5):
-        #     gantry_crane_connector.move_trolley_to_middle()
-        #     gantry_crane_connector.hoist_container_to_bottom()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, -700], increment=-10, timeout_sec=2.0)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_falling_sweep_hoist_data_10_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(5):            
+            gantry_crane_connector.hoist_container_to_top()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, 800], increment=10, timeout_sec=2.0)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_hoist_data_10_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
+        
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(5):
+            gantry_crane_connector.hoist_container_to_bottom()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, -800], increment=-10, timeout_sec=2.0)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_falling_sweep_hoist_data_10_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
         # # Control gantry crane to first position
         # result = control_gantry_crane(

@@ -20,9 +20,11 @@ class Logger:
     def create_folder(self):
         folder_name = datetime.now().strftime("%Y-%m-%d/%H-%M-%S")
         self.folder_path = os.path.join(self.parent_folder_path, folder_name)
-        os.makedirs(self.folder_path)
 
     def write_buffers_to_excel(self, file_name, sheet_name='Sheet1'):
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path)
+
         file_path = os.path.join(self.folder_path, file_name)
         
         # Check if the file already exists

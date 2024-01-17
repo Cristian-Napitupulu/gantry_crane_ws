@@ -8,7 +8,7 @@
 #define NODE_NAME "microcontroller_gantry"
 #define TROLLEY_POSITION_TOPIC_NAME "trolley_position"
 #define LIMIT_SWITCH_TOPIC_NAME "limit_switch"
-#define MOTOR_PWM_TOPIC_NAME "motor_pwm"
+#define CONTROLLER_COMMAND_TOPIC_NAME "controller_command"
 #define TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME "trolley_motor_voltage"
 #define HOIST_MOTOR_VOLTAGE_TOPIC_NAME "hoist_motor_voltage"
 
@@ -29,8 +29,11 @@
 #define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 5
 #define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
 
-// motor PWM subscriber
-#define MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS 5
+// Controller Command subscriber
+#define CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS 5
+
+// Timeout for controller command
+#define CONTROLLER_COMMAND_TIMEOUT_MS 500
 
 /*Minimum and maximum PWM values
 * Minimum PWM value is the value when the motor is barely moving (dead zone)

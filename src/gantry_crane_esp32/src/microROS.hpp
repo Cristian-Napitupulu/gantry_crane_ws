@@ -34,6 +34,7 @@
     rcl_ret_t temp_rc = fn;      \
     if ((temp_rc != RCL_RET_OK)) \
     {                            \
+      gantryMode = IDLE_MODE;    \
     }                            \
   }
 
@@ -119,6 +120,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
   }
 }
 
+unsigned long controller_command_last_call_time = 0;
 bool brakeTrolleyMotor = false;
 bool brakeHoistMotor = false;
 void controllerCommandHandler();
@@ -127,6 +129,7 @@ void controllerCommandCallback(const void *msgin)
   const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   controllerCommandHandler();
+  controller_command_last_call_time = millis();
 }
 
 void controllerCommandHandler()
@@ -172,13 +175,15 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
     {
       trolleyMotorVoltage = -trolleyMotorVoltage;
     }
-    if (fabs(trolleyMotorVoltage ) < 0.0001){
+    if (fabs(trolleyMotorVoltage) < 0.0001)
+    {
       trolleyMotorVoltage = 0;
     }
     trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
     lastTrolleyMotorVoltage = trolleyMotorVoltage;
-    if (trolleyMotorPWM >= 0 || lastTrolleyMotorVoltage > -0.5){
+    if (trolleyMotorPWM >= 0 || lastTrolleyMotorVoltage > -0.5)
+    {
       lastTrolleyMotorVoltage = 0;
     }
   }
@@ -195,13 +200,15 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
     {
       hoistMotorVoltage = -hoistMotorVoltage;
     }
-    if (fabs(hoistMotorVoltage) < 0.0001){
+    if (fabs(hoistMotorVoltage) < 0.0001)
+    {
       hoistMotorVoltage = 0;
     }
     hoistMotorVoltageMessage.data = hoistMotorVoltage;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
     lastHoistMotorVoltage = hoistMotorVoltage;
-    if (hoistMotorPWM >= 0 || lastHoistMotorVoltage > -0.5){
+    if (hoistMotorPWM >= 0 || lastHoistMotorVoltage > -0.5)
+    {
       lastHoistMotorVoltage = 0;
     }
   }
@@ -228,14 +235,14 @@ void initTrolleyPositionPublisher()
   RCCHECK(rclc_executor_add_timer(&positionPubExecutor, &positionPubTimer));
 }
 
-void initMotorPWMSubscriber()
+void initControllerCommandSubscriber()
 {
   // motor PWM subscriber init
   RCCHECK(rclc_subscription_init_default(
       &controllerCommandSubscriber,
       &microcontrollerGantryNode,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
-      MOTOR_PWM_TOPIC_NAME));
+      CONTROLLER_COMMAND_TOPIC_NAME));
 
   // motor PWM executor init
   RCCHECK(rclc_executor_init(&controllerCommandExecutor, &support.context, 1, &allocator));
@@ -320,7 +327,7 @@ void microROSInit()
   RCCHECK(rclc_node_init_default(&microcontrollerGantryNode, NODE_NAME, "", &support));
 
   // init motor PWM subscriber
-  initMotorPWMSubscriber();
+  initControllerCommandSubscriber();
 
   // init trolley position publisher
   initTrolleyPositionPublisher();

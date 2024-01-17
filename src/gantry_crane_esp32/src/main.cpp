@@ -23,7 +23,7 @@ void spinMicroROS(void *parameter)
     trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
 
     RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
     RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
     RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
     // RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
@@ -103,29 +103,24 @@ void controllerCommandTask(void *parameter)
   {
     checkLimitSwitch();
 
-    trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
-    hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
-
     if (brakeTrolleyMotor)
     {
-      trolleyMotor.setPWM(0);
-      brakeTrolleyMotor = false;
-      trolleyMotor.brake();
-    }
-    else
-    {
+      trolleyMotorPWM = 0;
       trolleyMotor.setPWM(trolleyMotorPWM);
+      trolleyMotor.brake();
+      brakeTrolleyMotor = false;
     }
 
     if (brakeHoistMotor)
     {
-      hoistMotor.setPWM(0);
-      brakeHoistMotor = false;
-      hoistMotor.brake();
-    }
-    else{
+      hoistMotorPWM = 0;
       hoistMotor.setPWM(hoistMotorPWM);
+      hoistMotor.brake();
+      brakeHoistMotor = false;
     }
+
+    trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
+    hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
 
     if (gantryMode == IDLE_MODE)
     {
@@ -138,7 +133,10 @@ void controllerCommandTask(void *parameter)
     else if (gantryMode == CONTROL_MODE)
     {
       // Control gantry
-      // Add code specific to CONTROL_MODE
+      if (millis() - controller_command_last_call_time >= CONTROLLER_COMMAND_TIMEOUT_MS)
+      {
+        gantryMode = IDLE_MODE;
+      }
     }
     else if (gantryMode == LOCK_CONTAINER_MODE)
     {
@@ -174,6 +172,7 @@ void controllerCommandTask(void *parameter)
         gantryMode = IDLE_MODE;
       }
     }
+
     else if (gantryMode == MOVE_TO_END_MODE)
     {
       if (limitSwitchTrolleyMotorSide.getState() != LOW)
@@ -191,6 +190,8 @@ void controllerCommandTask(void *parameter)
     {
       gantryMode = IDLE_MODE;
     }
+    trolleyMotor.setPWM(trolleyMotorPWM);
+    hoistMotor.setPWM(hoistMotorPWM);
   }
 }
 

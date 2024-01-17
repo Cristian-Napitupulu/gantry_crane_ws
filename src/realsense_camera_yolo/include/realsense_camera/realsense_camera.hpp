@@ -63,11 +63,10 @@ private:
     const int depthWidth, depthHeight; 
 
     pointProjections projector;
-    MovingAverage containerXPosition;
-    MovingAverage containerYPosition;
-    MovingAverage containerZPosition;
-
-    rclcpp::Time last_time;
+    // MovingAverage containerXPosition;
+    // MovingAverage containerYPosition;
+    // MovingAverage containerZPosition;
+    MovingAverage executionTime;
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

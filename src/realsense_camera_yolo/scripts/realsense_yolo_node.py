@@ -13,12 +13,10 @@ import time
 CONTAINER_RATIO = 15 / 33.5
 YOLO_ONLY_MODE = True
 
-
 class ResultID:
     NoResult = 0
     YOLOResult = 1
     CornerResult = 2
-
 
 # Create a moving average class to smooth out the bounding box coordinates
 class MovingAverage(np.ndarray):
@@ -69,10 +67,8 @@ class RealSenseYOLOServer(Node):
         # Print something for debugging
         self.get_logger().info("Service server ready. Waiting for requests...")
 
-        # Start timer
-        self.start = time.time()
-
     def execute_yolo_callback(self, request, result):
+        self.start = time.time()
         # Convert ROS2 Image message to OpenCV image
         depth_image = self.bridge.imgmsg_to_cv2(
             request.depth_image, desired_encoding="passthrough"
@@ -146,7 +142,8 @@ class RealSenseYOLOServer(Node):
             # Stop timer
             end = time.time()
             execution_time = (end - self.start) * 1000
-            self.start = time.time()
+            moving_average_execution_time.add(execution_time)
+            execution_time = moving_average_execution_time.get()
 
             if entire_container_visible:
                 result.id = ResultID.YOLOResult
@@ -206,8 +203,6 @@ class RealSenseYOLOServer(Node):
             self.get_logger().info(
                 f"No bounding box found. Execution time: {execution_time:.2f}ms"
             )
-
-            self.start = time.time()
 
             return result
 

@@ -18,9 +18,10 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      projector(NORMAL_PLANE_A, NORMAL_PLANE_B, NORMAL_PLANE_C, NORMAL_PLANE_D,
                                                NORMAL_LINE_A, NORMAL_LINE_B, NORMAL_LINE_C,
                                                TROLLEY_ORIGIN_X, TROLLEY_ORIGIN_Y, TROLLEY_ORIGIN_Z),
-                                     containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                     containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                     containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE)
+                                    //  containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                    //  containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                    //  containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                     executionTime(30)
 {
 
     initializeRealSenseCamera();
@@ -33,6 +34,9 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
 
     while (rclcpp::ok())
     {
+        // Print loop rate in miliseconds
+        rclcpp::Time start_time = rclcpp::Clock().now();
+
         // Print something for debugging
         RCLCPP_DEBUG(this->get_logger(), "Waiting for new frames...");
 
@@ -59,6 +63,10 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
             RCLCPP_ERROR(this->get_logger(), "Shutting down...");
             rclcpp::shutdown();
         }
+
+        rclcpp::Time end_time = rclcpp::Clock().now();
+        int execution_time_ = static_cast<int>((end_time - start_time).seconds() * 1000);
+        executionTime.addValue(execution_time_);
     }
 }
 
@@ -165,6 +173,9 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
     request->depth_image = *depth_image_message.get();
     auto result = YOLO_client->async_send_request(request);
 
+    // Print something for debugging
+    RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
+
     if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
     {
         // Get response
@@ -198,13 +209,11 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
         // Publish cable length and sway angle
         publishCableLengthAndSwayAngle();
     }
+
     else
     {
         RCLCPP_WARN(this->get_logger(), "Failed to call YOLO service.");
     }
-
-    // Print something for debugging
-    RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
 }
 
 std::vector<rs2::vertex> RealSenseCamera::generatePointCloudInsideBoundingBox(rs2::depth_frame depth_frame)
@@ -298,13 +307,17 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     float depthPoint[3];
     rs2_deproject_pixel_to_point(depthPoint, &depth_intrinsics, center_pixel, depth_value);
 
-    containerXPosition.addValue(depthPoint[0]);
-    containerYPosition.addValue(depthPoint[1]);
-    containerZPosition.addValue(depthPoint[2]);
+    // containerXPosition.addValue(depthPoint[0]);
+    // containerYPosition.addValue(depthPoint[1]);
+    // containerZPosition.addValue(depthPoint[2]);
 
-    containerCenterPoint[0] = containerXPosition.getMovingAverage();
-    containerCenterPoint[1] = containerYPosition.getMovingAverage();
-    containerCenterPoint[2] = containerZPosition.getMovingAverage();
+    // containerCenterPoint[0] = containerXPosition.getMovingAverage();
+    // containerCenterPoint[1] = containerYPosition.getMovingAverage();
+    // containerCenterPoint[2] = containerZPosition.getMovingAverage();
+
+    containerCenterPoint[0] = depthPoint[0];
+    containerCenterPoint[1] = depthPoint[1];
+    containerCenterPoint[2] = depthPoint[2];
 
     // Print container center point for debugging
     RCLCPP_INFO(get_logger(), "Container center point (x, y, z) (meters): (%.5f, %.5f, %.5f)",
@@ -337,12 +350,9 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     sway_angle_message.data = sway_angle;
     swayAnglePublisher->publish(sway_angle_message);
 
-    // Print loop rate in miliseconds
-    rclcpp::Time time_now = rclcpp::Clock().now();
-    int execution_time = static_cast<int>((time_now - last_time).seconds() * 1000);
+    int execution_time = executionTime.getMovingAverage();
     // Print cable length and sway angle for debugging
     RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle, execution_time);
-    last_time = time_now;
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)

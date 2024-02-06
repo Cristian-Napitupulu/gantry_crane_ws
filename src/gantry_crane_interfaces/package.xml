@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>realsense_camera_yolo_interfaces</name>
+  <name>gantry_crane_interfaces</name>
   <version>0.0.0</version>
-  <description>Package for realsense camera and realsense yolo service-client interface</description>
+  <description>Package for creating custom interface on gantry crane system</description>
   <maintainer email="cristiannapitupulu.exe@gmail.com">cristian napitupulu</maintainer>
   <license>Apache License 2.0</license>
 

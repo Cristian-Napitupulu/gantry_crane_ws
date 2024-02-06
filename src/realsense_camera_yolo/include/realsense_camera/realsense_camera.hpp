@@ -9,7 +9,7 @@
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 
-#include "realsense_camera_yolo_interfaces/srv/realsense_yolo.hpp"
+#include "gantry_crane_interfaces/srv/realsense_yolo.hpp"
 
 #include "point_projections/point_projections.hpp"
 #include "moving_average/moving_average.hpp"
@@ -17,7 +17,7 @@
 class RealSenseCamera : public rclcpp::Node
 {
 public:
-    using RealsenseYOLO = realsense_camera_yolo_interfaces::srv::RealsenseYOLO;
+    using RealsenseYOLO = gantry_crane_interfaces::srv::RealsenseYOLO;
 
     RealSenseCamera();
 

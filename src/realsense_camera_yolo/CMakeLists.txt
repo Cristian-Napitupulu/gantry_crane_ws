@@ -24,7 +24,7 @@ find_package(std_msgs REQUIRED)
 find_package(realsense2 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
-find_package(realsense_camera_yolo_interfaces REQUIRED)
+find_package(gantry_crane_interfaces REQUIRED)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
@@ -50,7 +50,7 @@ ament_target_dependencies(realsense_camera_node
   realsense2
   OpenCV
   cv_bridge
-  realsense_camera_yolo_interfaces
+  gantry_crane_interfaces
 )
 
 # link libraries for realsense_camera.cpp

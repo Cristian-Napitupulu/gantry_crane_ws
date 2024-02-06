@@ -6,7 +6,7 @@ import rclpy
 from cv_bridge import CvBridge
 from rclpy.node import Node
 from ultralytics import YOLO
-from realsense_camera_yolo_interfaces.srv import RealsenseYOLO
+from gantry_crane_interfaces.srv import RealsenseYOLO
 
 import time
 

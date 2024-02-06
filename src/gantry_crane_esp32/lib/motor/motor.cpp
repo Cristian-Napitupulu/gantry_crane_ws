@@ -44,10 +44,10 @@ void Motor::setPWM(int16_t PWM)
         PWM = -this->minPWM;
     }
 
-    if (PWM == currentPWM)
-    {
-        return;
-    }
+    // if (PWM == currentPWM)
+    // {
+    //     return;
+    // }
 
     this->currentPWM = PWM;
 

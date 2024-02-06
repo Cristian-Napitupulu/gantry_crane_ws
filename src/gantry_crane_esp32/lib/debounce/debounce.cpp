@@ -1,6 +1,6 @@
 #include "debounce.hpp"
 
-Debounce::Debounce(int pin, unsigned long debounceDelay)
+Debounce::Debounce(int pin, u_int32_t debounceDelay)
 {
     this->pin = pin;
     this->debounceDelay = debounceDelay;
@@ -20,10 +20,10 @@ int Debounce::getState()
 
     if (reading != lastState)
     {
-        lastDebounceTime = millis();
+        lastDebounceTime = micros() / 1000;
     }
 
-    if ((millis() - lastDebounceTime) > debounceDelay)
+    if ((micros() / 1000 - lastDebounceTime) > debounceDelay)
     {
         if (reading != state)
         {

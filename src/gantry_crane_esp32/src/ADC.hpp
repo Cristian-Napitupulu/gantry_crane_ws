@@ -45,8 +45,8 @@ public:
   }
 };
 
-MovingAverage trolleyMotorVoltageMovingAverage(TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE);
-MovingAverage hoistMotorVoltageMovingAverage(HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE);
+// MovingAverage trolleyMotorVoltageMovingAverage(TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE);
+// MovingAverage hoistMotorVoltageMovingAverage(HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE);
 
 void analogToDigitalConverterInit()
 {

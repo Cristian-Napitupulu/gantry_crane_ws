@@ -3,10 +3,10 @@ class LED
 private:
     int ledPin;
     bool isBlinking;
-    volatile int32_t previousMillis;
+    volatile u_int32_t previousMillis;
     int32_t blinkPeriod;
     bool periodChanged;
-    int32_t pulseDuration = 100;
+    int32_t pulseDuration = 50;
 
 public:
     // Constructor
@@ -44,7 +44,7 @@ public:
         }
         if (isBlinking)
         {
-            int32_t currentMillis = millis();
+            u_int32_t currentMillis = micros() / 1000;
             if (currentMillis - previousMillis >= this->blinkPeriod)
             {
                 previousMillis = currentMillis;
@@ -62,13 +62,13 @@ public:
         }
         if (isBlinking)
         {
-            int32_t currentMillis = millis();
+            u_int32_t currentMillis = micros() / 1000;
             if (currentMillis - previousMillis >= this->blinkPeriod)
             {
                 previousMillis = currentMillis;
                 digitalWrite(ledPin, HIGH); // Toggle the LED state
             }
-            if (millis() - previousMillis >= pulseDuration)
+            if (micros() / 1000 - previousMillis >= pulseDuration)
             {
                 digitalWrite(ledPin, LOW);
             }

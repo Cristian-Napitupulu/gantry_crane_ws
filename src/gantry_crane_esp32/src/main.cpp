@@ -12,26 +12,15 @@ TaskHandle_t spinMicroROSTaskHandle;
 
 void controllerCommandTask(void *parameter);
 
+void spinMicroROS(void *parameter);
+
 void findOrigin();
-
-void spinMicroROS(void *parameter)
-{
-  for (;;)
-  {
-    ledBuiltIn.pulse(500);
-
-    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
-
-    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-    // RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
-  }
-}
 
 void setup()
 {
+
+  // Serial.begin(115200);
+
   // Initialize notification LED
   ledBuiltIn.begin();
   ledBuiltIn.turnOn();
@@ -54,11 +43,11 @@ void setup()
   // Initialize microROS
   microROSInit();
 
-  // unsigned long start_time = millis();
+  // unsigned long start_time = micros() / 1000;
   // while (true)
   // {
   //   ledBuiltIn.pulse(500);
-  //   if (millis() - start_time > 5000)
+  //   if (micros() / 1000 - start_time > 5000)
   //   {
   //     break;
   //   }
@@ -78,16 +67,16 @@ void setup()
       NULL,
       1,
       &controllerCommandTaskHandle,
-      0);
+      1);
 
   // xTaskCreatePinnedToCore(
   //     spinMicroROS,
   //     "microROS spin task",
-  //     10000,
+  //     30000,
   //     NULL,
-  //     1,
+  //     0,
   //     &spinMicroROSTaskHandle,
-  //     1);
+  //     0);
 }
 
 unsigned long lastTime = 0;
@@ -95,6 +84,23 @@ bool inside = false;
 void loop()
 {
   spinMicroROS(NULL);
+  // controllerCommandTask(NULL);
+}
+
+void spinMicroROS(void *parameter)
+{
+  for (;;)
+  {
+    ledBuiltIn.pulse(250);
+
+    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
+
+    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+    // RCSOFTCHECK(rclc_executor_spin_some(&limitSwitchExecutor, RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_TIMEOUT_MS)));
+  }
 }
 
 void controllerCommandTask(void *parameter)
@@ -102,6 +108,10 @@ void controllerCommandTask(void *parameter)
   for (;;)
   {
     checkLimitSwitch();
+
+    // ledBuiltIn.pulse(250);
+
+    // trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
 
     if (brakeTrolleyMotor)
     {
@@ -119,9 +129,6 @@ void controllerCommandTask(void *parameter)
       brakeHoistMotor = false;
     }
 
-    trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
-    hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
-
     if (gantryMode == IDLE_MODE)
     {
       // Do nothing
@@ -129,11 +136,15 @@ void controllerCommandTask(void *parameter)
       hoistMotorPWM = 0;
       lastTrolleyMotorVoltage = 0;
       lastHoistMotorVoltage = 0;
+
+      trolleyMotor.brake();
+      hoistMotor.brake();
     }
     else if (gantryMode == CONTROL_MODE)
     {
       // Control gantry
-      if (millis() - controller_command_last_call_time >= CONTROLLER_COMMAND_TIMEOUT_MS)
+      u_int32_t current_time = micros() / 1000;
+      if (current_time - controller_command_last_call_time >= CONTROLLER_COMMAND_TIMEOUT_MS)
       {
         gantryMode = IDLE_MODE;
       }
@@ -192,6 +203,12 @@ void controllerCommandTask(void *parameter)
     }
     trolleyMotor.setPWM(trolleyMotorPWM);
     hoistMotor.setPWM(hoistMotorPWM);
+
+    // trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
+    // hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
+
+    trolleyMotorVoltage = readChannel(ADS1115_COMP_0_GND);
+    hoistMotorVoltage = readChannel(ADS1115_COMP_1_GND);
   }
 }
 

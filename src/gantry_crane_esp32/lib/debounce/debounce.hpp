@@ -9,11 +9,11 @@ private:
   uint8_t pin;
   int state;
   int lastState;
-  unsigned long lastDebounceTime;
-  unsigned long debounceDelay;
+  u_int32_t lastDebounceTime;
+  u_int32_t debounceDelay;
 
 public:
-  Debounce(int pin, unsigned long debounceDelay = 3);
+  Debounce(int pin, u_int32_t debounceDelay = 3);
   void begin();
   int getState();
   uint8_t getPin();

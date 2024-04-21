@@ -53,7 +53,7 @@
 #define HOIST_MOTOR_PWM_MAX 850
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 605
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 600
 
 #define TROLLEY_SPEED_MAX 5.0
 
@@ -76,6 +76,7 @@
 * Pin 21 to 23 are used for I2C communication, so don't use them.
 * Pin 34 to 39 are input only, be careful when using them.
 */
+
 // Encoder pins
 #define ENCODER_CHANNEL_A_PIN 33
 #define ENCODER_CHANNEL_B_PIN 32
@@ -87,7 +88,7 @@
 
 // Hoist motor pins
 #define HOIST_MOTOR_FORWARD_PIN 13
-#define HOIST_MOTOR_REVERSE_PIN 12
+#define HOIST_MOTOR_REVERSE_PIN 19
 #define HOIST_MOTOR_PWM_PIN 14
 
 // Limit switches pins

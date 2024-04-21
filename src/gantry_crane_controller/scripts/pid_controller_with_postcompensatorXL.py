@@ -237,7 +237,6 @@ def fuzzytype2(u,e,tet,u0=575):
     res=myIT2FLS.evaluate({"u":u, "e":e, "tet":tet})
     return res['un']
 
-
 def fuzzytype2_PID(u,e,tet,u0=575):
     domain1 = linspace(0., 12., 100)
     Z1 = IT2FS_Gaussian_UncertStd(domain1, [0, 0.3, 0.2, 1.])
@@ -378,30 +377,6 @@ class Controller(Node):
         
         control_input1= np.sign(control_now)*ufuzz
 
-        """
-        
-        
-        if CS1 > 0:
-            control_input1 = int(self.tanh_interpolation(control_now, 0, 570, 12, 700))
-        elif CS1<0:
-            control_input1 = -1 * (int(self.tanh_interpolation(-control_now, 0, 570, 12, 700)))
-        else:
-            control_input1=0
-        """
-
-        # if CS1 > 0:
-        #     control_input1 = int(self.linear_interpolation(control_now, 0, 575, 12, 700))
-        # elif CS1<0:
-        #     control_input1 = -1 * (int(self.linear_interpolation(-control_now, 0, 575, 12, 700)))
-        # else:
-        #     control_input1=0
-        
-        # if control_input1 > MAX_PWM:
-        #     control_input1 = MAX_PWM
-        # elif control_input1 < -MAX_PWM:
-        #     control_input1 = -MAX_PWM
-
-        # control_input1 = 0
         control_input2 = 0
         print("Control input 1: ", control_input1)
 
@@ -442,14 +417,18 @@ class Controller(Node):
         CS1 = -Kpx * ex - Kdx * dex 
         #CS1 = -Kpx * nex - Kdx * ((ex - self.lex)/0.01 )
         print(f"Control_X: {CS1},e_x{ex}, tet={tetha}")
-        ufuzz=fuzzytype2(CS1,ex,tetha)
+        ufuzz=fuzzytype2(CS1,ex,tetha,575)
         
         
         CS1_= np.sign(CS1)*ufuzz
         # Control Signal CLength
         CS2 = -Kpl * el - Kdl * dell
-        CS2 = 0
-
+        if np.sign(CS2)==-1:
+            ufuzzl=fuzzytype2(CS2,el,tetha,650) 
+        else:
+            ufuzzl=fuzzytype2(CS2,el,tetha,520)   
+        pwm_hoist= np.sign(CS2)*ufuzzl
+        control_input2=int(pwm_hoist)
         self.lex = ex
 
         print(f"Control_X: {CS1_},Control_fX{ufuzz}, Control_L={CS2}")
@@ -472,10 +451,7 @@ class Controller(Node):
         #     #control_input1 = int(self.line ar_interpolation(CS1, 0, 570, 20, 700))
         
         control_input1=int(CS1_)
-        if CS2 > 0:
-            control_input2 = int(self.tanh_interpolation(CS2, 0, 250, 5, 500))
-        else:
-            control_input2 = -1 * (int(self.tanh_interpolation(-CS2, 0, 250, 5, 500)))
+
 
         if control_input1 > MAX_PWM:
             control_input1 = MAX_PWM
@@ -527,11 +503,6 @@ if __name__ == "__main__":
     slidingModeController = Controller()
     timestamp0 = time.time()
     pengontrol = "PSO_PID"
-    gantryMode = CONTROL_MODE
-    slidingModeController.publish_motor_pwm(
-        gantryMode, 0, 0
-    )
-    time.sleep(5)
     try:
         while 1:
             # PID Robust
@@ -550,24 +521,24 @@ if __name__ == "__main__":
             # ) = slidingModeController.get_PID_control_input(
             #     gantry_crane, x_ref, t,tnow
             # )
-            #trolley_motor_pwm=0
+
             # Lyapunov Control Action
-            # x_ref = 0.6
-            # l_ref = 0.5
-            # (
-            #     trolley_motor_pwm,
-            #     hoist_motor_pwm,
-            # ) = slidingModeController.get_lyapunov_control_input(
-            #     gantry_crane, x_ref, l_ref
-            # )
-            
+            x_ref = 0.6
+            l_ref = 0.5
+            (
+                trolley_motor_pwm,
+                hoist_motor_pwm,
+            ) = slidingModeController.get_lyapunov_control_input(
+                gantry_crane, x_ref, l_ref
+            )
+
             gantryMode = CONTROL_MODE
             slidingModeController.publish_motor_pwm(
                 gantryMode, trolley_motor_pwm, hoist_motor_pwm
             )
 
-            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.01)
+            rclpy.spin_once(gantry_crane, timeout_sec=0.02)
+            rclpy.spin_once(slidingModeController, timeout_sec=0.02)
 
             if tnow > 50:
                 break

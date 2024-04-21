@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
@@ -15,7 +17,7 @@ SWAY_ANGLE_TOPIC_NAME = "sway_angle"
 TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME = "trolley_motor_voltage"
 HOIST_MOTOR_VOLTAGE_TOPIC_NAME = "hoist_motor_voltage"
 
-MOTOR_PWM_TOPIC_NAME = "motor_pwm"
+CONTROLLER_COMMAND_TOPIC_NAME = "controller_command"
 
 DEFAULT_SPIN_TIMEOUT = 0.025  # Default spin timeout in seconds
 
@@ -25,10 +27,10 @@ MIN_TROLLEY_POSITION = 0.0  # Minimum trolley position in meters
 MAX_CABLE_LENGTH = 0.65  # Maximum cable length in meters
 MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
-MODES_TIMEOUT = 5.0  # Timeout for modes in seconds
+MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
 
-HOIST_RISE_PWM = 695  # PWM for hoist motor to rise the container
-HOIST_LOWER_PWM = 515  # PWM for hoist motor to lower the container
+HOIST_RISE_PWM = 750  # PWM for hoist motor to rise the container
+HOIST_LOWER_PWM = 750  # PWM for hoist motor to lower the container
 
 
 class GantryControlModes:
@@ -40,7 +42,7 @@ class GantryControlModes:
     UNLOCK_CONTAINER_MODE = (
         0x5F  # Unlock container mode, move servo to unlock container
     )
-    CONTROL_MODE = 0xFF  # Control mode, control trolley and hoist motors
+    CONTROL_MODE = 0x6F  # Control mode, control trolley and hoist motors
     PWM_BRAKE_FLAG = 0x7FF  # Brake command, flag to stop either trolley or hoist motor
 
 
@@ -57,7 +59,7 @@ class GantryCraneConnector(Node):
 
         # Initialize publisher
         self.motor_pwm_publisher = self.create_publisher(
-            UInt32, MOTOR_PWM_TOPIC_NAME, 10
+            UInt32, CONTROLLER_COMMAND_TOPIC_NAME, 10
         )
 
         self.initialize_variables()
@@ -319,10 +321,19 @@ class GantryCraneConnector(Node):
     ):
         self.control_pwm["trolley_motor"] = input_pwm_trolley_motor
         self.control_pwm["hoist_motor"] = input_pwm_hoist_motor
+
+        # message = ControllerCommandMessage()
+        # message.mode = gantry_mode
+        # message.trolley_motor_pwm = self.control_pwm["trolley_motor"]
+        # message.hoist_motor_pwm = self.control_pwm["hoist_motor"]
+
         message = UInt32()
         message.data = self.packValues(
-            gantry_mode, input_pwm_trolley_motor, input_pwm_hoist_motor
+            gantry_mode,
+            self.control_pwm["trolley_motor"],
+            self.control_pwm["hoist_motor"],
         )
+
         self.motor_pwm_publisher.publish(message)
         self.update()
 
@@ -365,6 +376,7 @@ class GantryCraneConnector(Node):
         return packed_value
 
     def begin(self, slide_to_position="origin", hoist_to_position="middle"):
+        self.get_logger().info("Beginning gantry crane connector...")
         self.wait_for_messages()
         self.wait_for_subscribers()
         self.reset_variable()
@@ -403,11 +415,15 @@ class GantryCraneConnector(Node):
     def wait_for_messages(self):
         self.get_logger().info("Waiting for messages...")
         for variable_name in self.variables_value:
+            if variable_name == "trolley_motor_voltage":
+                break
+
             self.get_logger().info("Waiting for " + variable_name + " messages...")
             while self.variables_value[variable_name] is None:
                 self.update()
                 time.sleep(0.1)
-            self.get_logger().info(variable_name + " messages received")
+            self.get_logger().info("..."+ variable_name + " messages received")
+
         self.get_logger().info("All messages received")
 
     def move_trolley_to_origin(self):
@@ -419,7 +435,6 @@ class GantryCraneConnector(Node):
         ):
             self.publish_command(GantryControlModes.MOVE_TO_ORIGIN_MODE, 0, 0)
             self.update()
-            time.sleep(0.5)
 
         return True
 
@@ -436,7 +451,8 @@ class GantryCraneConnector(Node):
         ):
             self.publish_command(GantryControlModes.MOVE_TO_MIDDLE_MODE, 0, 0)
             self.update()
-            time.sleep(0.5)
+
+        self.brake(brake_trolley=True, brake_hoist=False)
 
         return True
 
@@ -449,7 +465,6 @@ class GantryCraneConnector(Node):
         ):
             self.publish_command(GantryControlModes.MOVE_TO_END_MODE, 0, 0)
             self.update()
-            time.sleep(0.5)
 
         return True
 
@@ -502,7 +517,6 @@ class GantryCraneConnector(Node):
         for i in range(10):
             self.publish_command(GantryControlModes.IDLE_MODE, 0, 0)
             self.update()
-            time.sleep(0.1)
 
     def hoist_container_to_top(self):
         self.initialize_variables()
@@ -528,7 +542,7 @@ class GantryCraneConnector(Node):
     def hoist_container_to_middle(self):
         self.initialize_variables()
         self.wait_for_messages()  # Wait for messages to make sure the cable length is updated
-        self.get_logger().info("Hoisting container to middle...")
+        self.get_logger().info("Hoisting container to middle... :" +str((MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2) + " m")
         start_time = time.time()
         while (
             abs(
@@ -546,6 +560,8 @@ class GantryCraneConnector(Node):
                 hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+            
+            self.get_logger().info("Error : " + str(error) + " m. PWM : " + str(hoist_pwm))
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
             self.update()
 

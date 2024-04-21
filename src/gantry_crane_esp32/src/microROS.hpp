@@ -12,6 +12,8 @@
 #include <std_msgs/msg/int8.h>
 #include <std_msgs/msg/float32.h>
 
+// #include "../../../install/gantry_crane_interfaces/include/gantry_crane_interfaces/gantry_crane_interfaces/msg/controller_command.h"
+
 #include "parameter.h"
 #include "variable.h"
 #include "utility.h"
@@ -120,7 +122,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
   }
 }
 
-u_int32_t controller_command_last_call_time = 0;
+uint64_t controller_command_last_call_time = 0;
 bool brakeTrolleyMotor = false;
 bool brakeHoistMotor = false;
 void controllerCommandHandler();
@@ -129,7 +131,7 @@ void controllerCommandCallback(const void *msgin)
   const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   controllerCommandHandler();
-  controller_command_last_call_time = micros() / 1000;
+  controller_command_last_call_time = millis() / 1000;
 }
 
 void controllerCommandHandler()
@@ -164,14 +166,13 @@ void controllerCommandHandler()
   }
 }
 
-float lastTrolleyMotorVoltage = 0;
-float trolleyMotorVoltage = 0;
+volatile float lastTrolleyMotorVoltage = 0;
+volatile float trolleyMotorVoltage = 0;
 void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float trolleyMotorVoltage_ = trolleyMotorVoltage * 3.1694367498;
     if (trolleyMotorPWM < 0 || encoderTrolley.getPulsePerSecond() < 0 || lastTrolleyMotorVoltage < 0.0)
     {
       trolleyMotorVoltage = -trolleyMotorVoltage;
@@ -180,9 +181,12 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
     {
       trolleyMotorVoltage = 0;
     }
-    // trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
+
+    volatile float trolleyMotorVoltage_ = trolleyMotorVoltage * 3.1694367498;
     trolleyMotorVoltageMessage.data = trolleyMotorPWM;
+    // trolleyMotorVoltageMessage.data = trolleyMotorPWM;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
+
     lastTrolleyMotorVoltage = trolleyMotorVoltage;
     if (trolleyMotorPWM >= 0 || lastTrolleyMotorVoltage > -0.5)
     {
@@ -191,14 +195,13 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   }
 }
 
-float lastHoistMotorVoltage = 0;
-float hoistMotorVoltage = 0;
+volatile float lastHoistMotorVoltage = 0;
+volatile float hoistMotorVoltage = 0;
 void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float hoistMotorVoltage_ = hoistMotorVoltage * 3.179049377;
     if (hoistMotorPWM < 0 || lastHoistMotorVoltage < 0.0)
     {
       hoistMotorVoltage = -hoistMotorVoltage;
@@ -207,8 +210,9 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
     {
       hoistMotorVoltage = 0;
     }
-    // hoistMotorVoltageMessage.data = hoistMotorVoltage;
+    volatile float hoistMotorVoltage_ = hoistMotorVoltage * 3.179049377;
     hoistMotorVoltageMessage.data = hoistMotorPWM;
+    // hoistMotorVoltageMessage.data = hoistMotorPWM;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
     lastHoistMotorVoltage = hoistMotorVoltage;
     if (hoistMotorPWM >= 0 || lastHoistMotorVoltage > -0.5)

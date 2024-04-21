@@ -472,7 +472,7 @@ class Controller:
 
         # Simplified control
         control_now = control_now - np.multiply(
-            self.matrix_k, np.tanh(np.multiply(self.matrix_gamma, slidingSurface))
+            self.matrix_k, np.sign(np.multiply(self.matrix_gamma, slidingSurface))
         )
 
         print("Control now: {}, {}.".format(control_now[0, 0], control_now[1, 0]))

@@ -26,7 +26,7 @@ TROLLEY_POSITION_TOPIC_NAME = "trolley_position"
 CABLE_LENGTH_TOPIC_NAME = "cable_length"
 SWAY_ANGLE_TOPIC_NAME = "sway_angle"
 
-MOTOR_PWM_TOPIC_NAME = "motor_pwm"
+MOTOR_PWM_TOPIC_NAME = "controller_command"
 
 # Mode
 IDLE_MODE = 0x0F
@@ -661,7 +661,7 @@ def collect_data(
     )
 
 
-DURATION = 20
+DURATION = 15
 if __name__ == "__main__":
     rclpy.init()
     gantry_crane = GantryCraneSystem()
@@ -697,7 +697,7 @@ if __name__ == "__main__":
             )
             if time.time() - start_time > 1:
                 break
-            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
+            rclpy.spin_once(gantry_crane, timeout_sec=0.001)
 
         trolley_motor_control_input = 0.0
         hoist_motor_control_input = 0.0
@@ -718,31 +718,47 @@ if __name__ == "__main__":
             # trolley_motor_pwm = slidingModeController.convert_to_pwm(trolley_motor_control_input)
             # print("trolley_motor_pwm: ",trolley_motor_pwm)
             # hoist_motor_pwm = slidingModeController.convert_to_pwm(hoist_motor_control_input)
-
-            # if gantry_crane.variables_value["trolley_position"] <1.0:
-            #     trolley_motor_pwm = 570
-            # elif gantry_crane.variables_value["trolley_position"] >1.0:
-            #     trolley_motor_pwm = -570
-            # else:
-            #     trolley_motor_pwm = 0
-            if gantry_crane.variables_value["cable_length"] <0.5:
-                hoist_motor_pwm = 590
-            elif gantry_crane.variables_value["cable_length"] >0.6:
-                hoist_motor_pwm = -700
-            else:
-                hoist_motor_pwm = 0   
-            #hoist_motor_pwm = 0
-            #trolley_motor_pwm = 0
             gantryMode = CONTROL_MODE
+
+            if gantry_crane.variables_value["trolley_position"] <0.6:
+                trolley_motor_pwm = 550
+            elif gantry_crane.variables_value["trolley_position"] >0.61:
+                trolley_motor_pwm = -550
+            else:
+                trolley_motor_pwm = 0
+            if gantry_crane.variables_value["cable_length"] <0.55:
+                hoist_motor_pwm = 700
+            elif gantry_crane.variables_value["cable_length"] >0.56:
+                hoist_motor_pwm = -720
+            else:
+                hoist_motor_pwm = 0
+            hoist_motor_pwm = hoist_motor_pwm
+            # trolley_motor_pwm = 0
+            
 
             slidingModeController.publish_motor_pwm(
                 gantryMode, trolley_motor_pwm, hoist_motor_pwm
             )
 
-            
+            # print(
+            #     "Trolley position: {} /t cable length: {}, sway angle: {}.".format(
+            #         gantry_crane.variables_value["trolley_position"],
+            #         gantry_crane.variables_value["cable_length"],
+            #         gantry_crane.variables_value["sway_angle"],
+            #     )
+            # )
 
-            rclpy.spin_once(gantry_crane, timeout_sec=0.01)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.01)
+            print(
+                "Trolley position: {} \t troley motor pwm: {}.".format(
+                    gantry_crane.variables_value["trolley_position"],
+                    trolley_motor_pwm,
+                )
+            )
+
+            # print(f"trolley_motor_pwm: {trolley_motor_pwm}, hoist_motor_pwm: {hoist_motor_pwm}")
+
+            rclpy.spin_once(gantry_crane, timeout_sec=0.025)
+            rclpy.spin_once(slidingModeController, timeout_sec=0.025)
 
             collect_data(
                 gantry_crane,
@@ -764,13 +780,19 @@ if __name__ == "__main__":
             float_format="%.7f",
         )
 
-        for i in range(10):
-            gantryMode = MOVE_TO_ORIGIN_MODE
-            slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
-            rclpy.spin_once(slidingModeController, timeout_sec=0.015)
-            time.sleep(0.05)
+        # for i in range(10):
+        #     gantryMode = MOVE_TO_ORIGIN_MODE
+        #     slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
+        #     rclpy.spin_once(slidingModeController, timeout_sec=0.015)
+        #     time.sleep(0.05)
 
     except KeyboardInterrupt:
         pass
 
+    for i in range(10):
+        gantryMode = IDLE_MODE
+        slidingModeController.publish_motor_pwm(gantryMode, 0, 0)
+        rclpy.spin_once(slidingModeController, timeout_sec=0.025)
+        time.sleep(0.05)
+    
     rclpy.shutdown()

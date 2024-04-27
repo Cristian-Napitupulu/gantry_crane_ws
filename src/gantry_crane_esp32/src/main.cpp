@@ -7,20 +7,15 @@
 #include "ADC.hpp"
 
 TaskHandle_t controllerCommandTaskHandle;
-
-TaskHandle_t spinMicroROSTaskHandle;
+TaskHandle_t findOriginTaskHandle;
 
 void controllerCommandTask(void *parameter);
 
-void spinMicroROS(void *parameter);
-
-void findOrigin();
+bool originFound = false;
+void findOrigin(void *parameter);
 
 void setup()
 {
-
-  // Serial.begin(115200);
-
   // Initialize notification LED
   ledBuiltIn.begin();
   ledBuiltIn.turnOn();
@@ -38,74 +33,54 @@ void setup()
   limitSwitchTrolleyMotorSide.begin();
 
   // Initialize ADC
-  analogToDigitalConverterInit();
+  // analogToDigitalConverterInit();
 
   // Initialize microROS
   microROSInit();
 
-  // Find origin
-  findOrigin();
+  xTaskCreatePinnedToCore(
+      spinMicroROS,
+      "Spin Micro ROS Task",
+      20000,
+      NULL,
+      1,
+      &spinMicroROSTaskHandle,
+      0);
 
   ledBuiltIn.turnOff();
 
-  gantryMode = IDLE_MODE;
+  findOrigin(NULL);
 
-  
+  gantryMode = IDLE_MODE;
 
   xTaskCreatePinnedToCore(
       controllerCommandTask,
-      "Controller command task",
-      25000,
+      "Controller Command Task",
+      20000,
       NULL,
       1,
       &controllerCommandTaskHandle,
       1);
-
-  // xTaskCreatePinnedToCore(
-  //     spinMicroROS,
-  //     "microROS spin task",
-  //     30000,
-  //     NULL,
-  //     0,
-  //     &spinMicroROSTaskHandle,
-  //     0);
 }
 
-unsigned long lastTime = 0;
-bool inside = false;
 void loop()
 {
   spinMicroROS(NULL);
   // controllerCommandTask(NULL);
 }
 
-void spinMicroROS(void *parameter)
+void controllerCommandTask(void *parameter)
 {
   for (;;)
   {
     ledBuiltIn.pulse(500);
 
-    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
-
-    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-    RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-  }
-}
-
-void controllerCommandTask(void *parameter)
-{
-  for (;;)
-  {
     checkLimitSwitch();
-
-    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
 
     if (brakeTrolleyMotor)
     {
       trolleyMotorPWM = 0;
-      trolleyMotor.setPWM(trolleyMotorPWM);
+      trolleyMotor.setPWM(&trolleyMotorPWM);
       trolleyMotor.brake();
       brakeTrolleyMotor = false;
     }
@@ -113,7 +88,7 @@ void controllerCommandTask(void *parameter)
     if (brakeHoistMotor)
     {
       hoistMotorPWM = 0;
-      hoistMotor.setPWM(hoistMotorPWM);
+      hoistMotor.setPWM(&hoistMotorPWM);
       hoistMotor.brake();
       brakeHoistMotor = false;
     }
@@ -164,7 +139,7 @@ void controllerCommandTask(void *parameter)
     else if (gantryMode == MOVE_TO_MIDDLE_MODE)
     {
       trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM * get_sign(ENCODER_MAX_VALUE / 2 - encoderTrolley.getPulse());
-      trolleyMotorPWM = trolleyMotorPWM/2;
+      trolleyMotorPWM = trolleyMotorPWM / 2;
       hoistMotorPWM = 0;
 
       if (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.01 * ENCODER_MAX_VALUE)
@@ -192,8 +167,8 @@ void controllerCommandTask(void *parameter)
       gantryMode = IDLE_MODE;
     }
 
-    trolleyMotor.setPWM(trolleyMotorPWM);
-    hoistMotor.setPWM(hoistMotorPWM);
+    trolleyMotor.setPWM(&trolleyMotorPWM);
+    hoistMotor.setPWM(&hoistMotorPWM);
 
     // trolleyMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_0_GND));
     // hoistMotorVoltageMovingAverage.addValue(readChannel(ADS1115_COMP_1_GND));
@@ -202,51 +177,37 @@ void controllerCommandTask(void *parameter)
   }
 }
 
-void findOrigin()
+void findOrigin(void *parameter)
 {
-  
-  int counter = 0;
-  while (counter < 2)
+  for (int i = 0; i < 2; i++)
   {
-    // ledBuiltIn.pulse(250);
-    // Serial.println("Finding origin");
-    if (limitSwitchEncoderSide.getState() != LOW)
+    while (limitSwitchEncoderSide.getState() != LOW)
     {
-      trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
-      trolleyMotor.setPWM(trolleyMotorPWM);
-      delay(10);
-    }
-    else
-    {
-      trolleyMotorPWM = 0;
-      trolleyMotor.setPWM(trolleyMotorPWM);
-      counter++;
-      delay(1000);
+      ledBuiltIn.pulse(125);
+      trolleyMotorPWM = -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 50 * i);
+      trolleyMotor.setPWM(&trolleyMotorPWM);
     }
 
-    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
-    positionMessage.data = trolleyPosition;
-    RCSOFTCHECK(rcl_publish(&positionPublisher, &positionMessage, NULL));
+    trolleyMotorPWM = 0;
+    trolleyMotor.setPWM(&trolleyMotorPWM);
+    delay(1500);
   }
 
-  counter = 0;
-  while (counter < 2)
+  delay(1000);
+
+  for (int i = 0; i < 2; i++)
   {
-    // ledBuiltIn.pulse(250);
-    for (int i = -0.5 * TROLLEY_MOTOR_PWM_MAX; i > -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 50); i--)
+    for (int i = -0.5 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i > -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 100); i--)
     {
       trolleyMotorPWM = i;
-      trolleyMotor.setPWM(trolleyMotorPWM);
+      trolleyMotor.setPWM(&trolleyMotorPWM);
       // delay(2);
     }
 
     trolleyMotorPWM = 0;
-    trolleyMotor.setPWM(trolleyMotorPWM);
-    counter++;
-    // delay(100);
+    trolleyMotor.setPWM(&trolleyMotorPWM);
+
+    delay(250);
     encoderTrolley.reset();
-    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
-    positionMessage.data = trolleyPosition;
-    RCSOFTCHECK(rcl_publish(&positionPublisher, &positionMessage, NULL));
   }
 }

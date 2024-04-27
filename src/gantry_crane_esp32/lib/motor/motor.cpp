@@ -22,48 +22,41 @@ void Motor::begin()
     analogWrite(this->pwmPin, 0);
 }
 
-void Motor::setPWM(int16_t PWM)
+void Motor::setPWM(int16_t *PWM)
 {
-    PWM = static_cast<int16_t>(PWM);
+    *PWM = static_cast<int16_t>(*PWM);
 
-    if (PWM > this->maxPWM)
+    if (*PWM > this->maxPWM)
     {
-        PWM = this->maxPWM;
+        *PWM = this->maxPWM;
     }
-    else if (PWM < -this->maxPWM)
+    else if (*PWM < -this->maxPWM)
     {
-        PWM = -this->maxPWM;
-    }
-
-    if (PWM < this->minPWM && PWM > 0)
-    {
-        PWM = this->minPWM;
-    }
-    else if (PWM > -this->minPWM && PWM < 0)
-    {
-        PWM = -this->minPWM;
+        *PWM = -this->maxPWM;
     }
 
-    // if (PWM == currentPWM)
-    // {
-    //     return;
-    // }
+    if (*PWM < this->minPWM && *PWM > 0)
+    {
+        *PWM = this->minPWM;
+    }
+    else if (*PWM > -this->minPWM && *PWM < 0)
+    {
+        *PWM = -this->minPWM;
+    }
 
-    this->currentPWM = PWM;
-
-    if (PWM > 0)
+    if (*PWM > 0)
     {
         digitalWrite(this->forwardPin, HIGH);
         digitalWrite(this->reversePin, LOW);
-        analogWrite(this->pwmPin, PWM);
+        analogWrite(this->pwmPin, *PWM);
     }
-    else if (PWM < 0)
+    else if (*PWM < 0)
     {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, HIGH);
-        analogWrite(this->pwmPin, -PWM);
+        analogWrite(this->pwmPin, -*PWM);
     }
-    else if (PWM == 0)
+    else if (*PWM == 0)
     {
         digitalWrite(this->forwardPin, LOW);
         digitalWrite(this->reversePin, LOW);

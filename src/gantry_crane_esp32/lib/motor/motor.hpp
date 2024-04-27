@@ -19,7 +19,7 @@ class Motor {
     public:
     Motor(u_int8_t forwardPin, u_int8_t reversePin, u_int8_t pwmPin,  int16_t minPWM, int16_t maxPWM);
     void begin();
-    void setPWM(int16_t PWM);
+    void setPWM(int16_t *PWM);
     void brake();
 };
 

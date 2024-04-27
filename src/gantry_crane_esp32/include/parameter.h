@@ -46,16 +46,14 @@
 */
 
 // Operating PWM values for trolley motor`
-#define TROLLEY_MOTOR_PWM_MAX 850
+#define TROLLEY_MOTOR_PWM_MAX 900
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Operating PWM values for hoist motor
 #define HOIST_MOTOR_PWM_MAX 850
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 600
-
-#define TROLLEY_SPEED_MAX 5.0
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 325
 
 // Encoder
 // Got from measurement

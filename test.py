@@ -1,11 +1,32 @@
-import numpy as np
+# Make a function to create hash of a file
+# Make a function to compare two files
 
-# Example arrays
-array1 = np.array([True, True, False, False])
-array2 = np.array([True, False, True, False])
+import hashlib
+import os
 
-# Applying logical AND operation
-result = np.logical_and(array1, array2)
+def hash_file(filename):
+    # make a hash object
+    h = hashlib.sha1()
 
-# Output
-print(result)
+    # open file for reading in binary mode
+    with open(filename,'rb') as file:
+        # loop till the end of the file
+        chunk = 0
+        while chunk != b'':
+            # read only 1024 bytes at a time
+            chunk = file.read(1024)
+            h.update(chunk)
+
+    # return the hex representation of digest
+    return h.hexdigest()
+
+def compare_files(file1,file2):
+    # make hashes of both files
+    hash1 = hash_file(file1)
+    hash2 = hash_file(file2)
+
+    # compare hashes
+    if hash1 == hash2:
+        print('Files are same.')
+    else:
+        print('Files are not same.')

@@ -12,8 +12,6 @@
 #include <std_msgs/msg/int8.h>
 #include <std_msgs/msg/float32.h>
 
-// #include "../../../install/gantry_crane_interfaces/include/gantry_crane_interfaces/gantry_crane_interfaces/msg/controller_command.h"
-
 #include "parameter.h"
 #include "variable.h"
 #include "utility.h"
@@ -22,6 +20,8 @@
 #if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
 #error This script is only available for Arduino framework with serial transport.
 #endif
+
+int32_t counter = 0;
 
 #define RCCHECK(fn)              \
   {                              \
@@ -36,21 +36,20 @@
     rcl_ret_t temp_rc = fn;      \
     if ((temp_rc != RCL_RET_OK)) \
     {                            \
-      gantryMode = IDLE_MODE;    \
+      counter++;                 \
     }                            \
-  }
+    if (counter > 5)             \
+    {                            \
+      gantryMode = IDLE_MODE;    \
+      counter = 0;               \
+    }                            \
+}
 
 // Global variables
 // micro-ROS node
 rcl_node_t microcontrollerGantryNode;
 rcl_allocator_t allocator;
 rclc_support_t support;
-
-// limit switches
-rcl_publisher_t limitSwitchPublisher;
-std_msgs__msg__Int8 limitSwitchMessage;
-rclc_executor_t limitSwitchExecutor;
-rcl_timer_t limitSwitchPubTimer;
 
 // encoder publisher, timer, and executor
 rcl_publisher_t positionPublisher;
@@ -75,39 +74,20 @@ std_msgs__msg__Float32 hoistMotorVoltageMessage;
 rclc_executor_t hoistMotorVoltageExecutor;
 rcl_timer_t hoistMotorVoltagePubTimer;
 
+TaskHandle_t microROSInitTaskHandle;
+SemaphoreHandle_t microROSInitFinishSemaphore;
+
+TaskHandle_t spinMicroROSTaskHandle;
+
+// Function prototypes
 void microROSInit();
+void spinMicroROS(void *parameter);
 
 // Error handle loop
 void error_loop()
 {
   ledBuiltIn.turnOn();
   microROSInit();
-}
-
-void publishLimitSwitchState(rcl_timer_t *timer, int64_t last_call_time)
-{
-  RCLC_UNUSED(last_call_time);
-  if (timer != NULL)
-  {
-    if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_BOTH_TRIGGERED;
-    }
-    else if (limitSwitchEncoderSideState && !limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_ENCODER_SIDE_TRIGGERED;
-    }
-    else if (!limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_TRIGGERED;
-    }
-    else
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_NONE_TRIGGERED;
-    }
-
-    RCSOFTCHECK(rcl_publish(&limitSwitchPublisher, &limitSwitchMessage, NULL));
-  }
 }
 
 float trolleyPosition = 0;
@@ -299,27 +279,6 @@ void initHoistMotorVoltagePublisher()
   RCCHECK(rclc_executor_add_timer(&hoistMotorVoltageExecutor, &hoistMotorVoltagePubTimer));
 }
 
-void initLimitSwitchPublisher()
-{
-  // limit switches publisher init
-  RCCHECK(rclc_publisher_init_default(
-      &limitSwitchPublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
-      LIMIT_SWITCH_TOPIC_NAME));
-
-  // limit switch timer init
-  RCCHECK(rclc_timer_init_default(
-      &limitSwitchPubTimer,
-      &support,
-      RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
-      publishLimitSwitchState));
-
-  // limit switch executor init
-  RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
-}
-
 void microROSInit()
 {
   // Configure serial transport
@@ -345,9 +304,19 @@ void microROSInit()
 
   // init hoist motor voltage publisher
   initHoistMotorVoltagePublisher();
+}
 
-  // init limit switch publisher
-  // initLimitSwitchPublisher();
+void spinMicroROS(void *parameter)
+{
+  for (;;)
+  {
+    trolleyPosition = map_value(encoderTrolley.getPulse(), ENCODER_MIN_VALUE, ENCODER_MAX_VALUE, POSITION_MIN_VALUE, POSITION_MAX_VALUE);
+
+    RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+    RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+  }
 }
 
 #endif // MICRO_ROS_HPP

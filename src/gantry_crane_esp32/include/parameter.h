@@ -53,7 +53,7 @@
 #define HOIST_MOTOR_PWM_MAX 850
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 325
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 800
 
 // Encoder
 // Got from measurement

@@ -3,7 +3,7 @@
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
             "matrix_alpha": {
-                "value": [[2.0, 0.0], [0.0, 4.7]],
+                "value": [[3.8, 0.0], [0.0, 4.7]],
                 "description": "Matrix Alpha: [[alpha1, 0], [0, alpha2]]"
             },
             "matrix_beta": {
@@ -15,7 +15,7 @@
                 "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
             "matrix_k": {
-                "value": [[7.5], [11.0]],
+                "value": [[7.25], [11.0]],
                 "description": "Matrix K: [[k1], [k2]]"
             },
             "matrix_gamma": {

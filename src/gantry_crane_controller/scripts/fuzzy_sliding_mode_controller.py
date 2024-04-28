@@ -719,17 +719,20 @@ if __name__ == "__main__":
             # print("trolley_motor_pwm: ",trolley_motor_pwm)
             # hoist_motor_pwm = slidingModeController.convert_to_pwm(hoist_motor_control_input)
             gantryMode = CONTROL_MODE
-
-            if gantry_crane.variables_value["trolley_position"] <0.6:
-                trolley_motor_pwm = 550
-            elif gantry_crane.variables_value["trolley_position"] >0.61:
-                trolley_motor_pwm = -550
+            #Nilai pwm kecepatan trolley 0 674-675
+            t_pwm=690
+            sp_pos=0.3
+            if gantry_crane.variables_value["trolley_position"] <sp_pos:
+                trolley_motor_pwm = t_pwm
+            elif gantry_crane.variables_value["trolley_position"] >sp_pos+0.03:
+                trolley_motor_pwm = -t_pwm
             else:
                 trolley_motor_pwm = 0
-            if gantry_crane.variables_value["cable_length"] <0.55:
-                hoist_motor_pwm = 700
-            elif gantry_crane.variables_value["cable_length"] >0.56:
-                hoist_motor_pwm = -720
+            #Nilai pwm kecepatan hoist 0 naik 785 turun 490
+            if gantry_crane.variables_value["cable_length"] <0.6:
+                hoist_motor_pwm = 490
+            elif gantry_crane.variables_value["cable_length"] >0.63:
+                hoist_motor_pwm = -830
             else:
                 hoist_motor_pwm = 0
             hoist_motor_pwm = hoist_motor_pwm

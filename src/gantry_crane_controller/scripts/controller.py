@@ -355,6 +355,9 @@ def control_gantry_crane(
             desired_trolley_position, desired_cable_length
         )
 
+        gantry_crane_connector.publish_command(
+            GantryControlModes.CONTROL_MODE, trolley_motor_pwm, hoist_motor_pwm
+        )
         send_command_and_collect_data(
             GantryControlModes.CONTROL_MODE, trolley_motor_pwm, hoist_motor_pwm
         )
@@ -444,25 +447,25 @@ if __name__ == "__main__":
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
     # Initialize gantry crane
-    gantry_crane_connector.begin(slide_to_position="middle",hoist_to_position="top")
+    gantry_crane_connector.begin(slide_to_position="middle", hoist_to_position="top")
     time.sleep(5.0)
 
     try:
         # Begin logger timer
         gantry_crane_logger.reset_timer()
 
-        # for i in range(5):
-        #     gantry_crane_connector.move_trolley_to_origin()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep trolley motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_trolley_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        for i in range(5):
+            gantry_crane_connector.move_trolley_to_origin()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep trolley motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_trolley_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
         # for i in range(5):
         #     gantry_crane_connector.move_trolley_to_end()
@@ -504,7 +507,7 @@ if __name__ == "__main__":
         #     gantry_crane_logger.reset_buffers()
 
         # gantry_crane_connector.move_trolley_to_middle()
-        # for i in range(5):            
+        # for i in range(5):
         #     gantry_crane_connector.hoist_container_to_top()
         #     gantry_crane_connector.idle()
         #     time.sleep(5.0)
@@ -516,7 +519,6 @@ if __name__ == "__main__":
         #         + "_rising_sweep_hoist_data_1_increment.xlsx"
         #     )
         #     gantry_crane_logger.reset_buffers()
-
 
         # gantry_crane_connector.move_trolley_to_middle()
         # for i in range(5):
@@ -533,7 +535,7 @@ if __name__ == "__main__":
         #     gantry_crane_logger.reset_buffers()
 
         # gantry_crane_connector.move_trolley_to_middle()
-        # for i in range(5):            
+        # for i in range(5):
         #     gantry_crane_connector.hoist_container_to_top()
         #     gantry_crane_connector.idle()
         #     time.sleep(5.0)
@@ -545,7 +547,7 @@ if __name__ == "__main__":
         #         + "_rising_sweep_hoist_data_10_increment.xlsx"
         #     )
         #     gantry_crane_logger.reset_buffers()
-        
+
         # gantry_crane_connector.move_trolley_to_middle()
         # for i in range(5):
         #     gantry_crane_connector.hoist_container_to_bottom()

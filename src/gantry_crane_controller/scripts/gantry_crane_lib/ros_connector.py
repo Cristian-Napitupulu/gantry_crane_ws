@@ -29,8 +29,8 @@ MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
 MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
 
-HOIST_RISE_PWM = 750  # PWM for hoist motor to rise the container
-HOIST_LOWER_PWM = 750  # PWM for hoist motor to lower the container
+HOIST_RISE_PWM = 850  # PWM for hoist motor to rise the container
+HOIST_LOWER_PWM = 850  # PWM for hoist motor to lower the container
 
 
 class GantryControlModes:

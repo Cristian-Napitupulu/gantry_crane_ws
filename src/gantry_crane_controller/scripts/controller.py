@@ -447,25 +447,41 @@ if __name__ == "__main__":
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
     # Initialize gantry crane
-    gantry_crane_connector.begin(slide_to_position="middle", hoist_to_position="top")
+    gantry_crane_connector.begin(slide_to_position="middle")
     time.sleep(5.0)
 
     try:
         # Begin logger timer
         gantry_crane_logger.reset_timer()
 
-        for i in range(5):
+        for i in range(1):
             gantry_crane_connector.move_trolley_to_origin()
             gantry_crane_connector.idle()
             time.sleep(5.0)
             # Sweep trolley motor PWM
             gantry_crane_logger.reset_timer()
-            sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=1, timeout_sec=0.1)
+            sweep_trolley_motor_pwm(pwm_range=[0, 750], increment=2, timeout_sec=0.1)
             gantry_crane_logger.write_buffers_to_excel(
                 gantry_crane_controller.get_name()
                 + "_rising_sweep_trolley_data_1_increment.xlsx"
             )
             gantry_crane_logger.reset_buffers()
+
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(1):
+            gantry_crane_connector.hoist_container_to_bottom()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, -1023], increment=-2, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_falling_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
+
+        
 
         # for i in range(5):
         #     gantry_crane_connector.move_trolley_to_end()
@@ -506,33 +522,21 @@ if __name__ == "__main__":
         #     )
         #     gantry_crane_logger.reset_buffers()
 
-        # gantry_crane_connector.move_trolley_to_middle()
-        # for i in range(5):
-        #     gantry_crane_connector.hoist_container_to_top()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, 800], increment=1, timeout_sec=0.1)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_hoist_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        gantry_crane_connector.move_trolley_to_middle()
+        for i in range(1):
+            gantry_crane_connector.hoist_container_to_top()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep hoist motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_hoist_motor_pwm(pwm_range=[0, 800], increment=1, timeout_sec=0.1)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_hoist_data_1_increment.xlsx"
+            )
+            gantry_crane_logger.reset_buffers()
 
-        # gantry_crane_connector.move_trolley_to_middle()
-        # for i in range(5):
-        #     gantry_crane_connector.hoist_container_to_bottom()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep hoist motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, -800], increment=-1, timeout_sec=0.1)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_falling_sweep_hoist_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        
 
         # gantry_crane_connector.move_trolley_to_middle()
         # for i in range(5):
@@ -605,6 +609,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
 
-    # gantry_crane_connector.move_trolley_to_middle()
-    # gantry_crane_connector.hoist_container_to_top()
-    rclpy.shutdown()
+    gantry_crane_connector.stop()

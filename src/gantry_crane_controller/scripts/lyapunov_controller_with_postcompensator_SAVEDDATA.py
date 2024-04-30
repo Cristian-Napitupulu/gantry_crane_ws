@@ -696,4 +696,4 @@ if __name__ == "__main__":
     Gantry_Crane_Connector.move_trolley_to_origin()
     Gantry_Crane_Connector.hoist_container_to_middle()
 
-    rclpy.shutdown()
+    Gantry_Crane_Connector.stop()

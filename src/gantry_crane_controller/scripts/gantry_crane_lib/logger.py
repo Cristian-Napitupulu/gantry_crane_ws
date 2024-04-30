@@ -65,3 +65,12 @@ class Logger:
     
     def reset_buffers(self):
         self.buffers = {}
+
+    def create_live_plot_from_buffers(self, x_variable_name, y_variable_name):
+        x = self.buffers[x_variable_name]
+        y = self.buffers[y_variable_name]
+        plt.plot(x, y)
+        plt.xlabel(x_variable_name)
+        plt.ylabel(y_variable_name)
+        plt.title(f"{y_variable_name} vs {x_variable_name}")
+        plt.pause(0.01)

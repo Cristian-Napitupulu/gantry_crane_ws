@@ -15,7 +15,7 @@
                 "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
             "matrix_k": {
-                "value": [[7.25], [11.0]],
+                "value": [[8.5], [11.0]],
                 "description": "Matrix K: [[k1], [k2]]"
             },
             "matrix_gamma": {

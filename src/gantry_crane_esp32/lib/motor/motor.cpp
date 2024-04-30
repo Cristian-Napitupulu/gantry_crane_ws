@@ -1,6 +1,6 @@
 #include "motor.hpp"
 
-Motor::Motor(uint8_t forwardPin, uint8_t reversePin, uint8_t pwmPin, int16_t minPWM, int16_t maxPWM)
+Motor::Motor(u_int8_t forwardPin, u_int8_t reversePin, u_int8_t pwmPin,  int16_t minPWM, int16_t maxPWM)
 {
     this->forwardPin = forwardPin;
     this->reversePin = reversePin;

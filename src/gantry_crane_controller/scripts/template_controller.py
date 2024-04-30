@@ -452,4 +452,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
 
-    rclpy.shutdown()
+    gantry_crane_connector.stop()

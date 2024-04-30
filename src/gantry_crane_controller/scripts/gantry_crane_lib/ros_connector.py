@@ -29,7 +29,7 @@ MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
 MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
 
-HOIST_RISE_PWM = 850  # PWM for hoist motor to rise the container
+HOIST_RISE_PWM = 900  # PWM for hoist motor to rise the container
 HOIST_LOWER_PWM = 850  # PWM for hoist motor to lower the container
 
 
@@ -179,14 +179,14 @@ class GantryCraneConnector(Node):
         self.last_variables_value[variable_name] = self.variables_value[variable_name]
 
         # Update last first derivatives
-        self.last_variables_first_derivative[
-            variable_name
-        ] = self.variables_first_derivative[variable_name]
+        self.last_variables_first_derivative[variable_name] = (
+            self.variables_first_derivative[variable_name]
+        )
 
         # Update last second derivatives
-        self.last_variables_second_derivative[
-            variable_name
-        ] = self.variables_second_derivative[variable_name]
+        self.last_variables_second_derivative[variable_name] = (
+            self.variables_second_derivative[variable_name]
+        )
 
         # Update timestamp
         self.last_variables_message_timestamp[variable_name] = time.time()
@@ -390,7 +390,7 @@ class GantryCraneConnector(Node):
         else:
             self.get_logger().info("Invalid trolley position")
             return False
-        
+
         if hoist_to_position == "top":
             self.hoist_container_to_top()
         elif hoist_to_position == "middle":
@@ -400,7 +400,7 @@ class GantryCraneConnector(Node):
         else:
             self.get_logger().info("Invalid container position")
             return False
-        
+
         self.idle()
 
         self.get_logger().info("Gantry crane connector ready")
@@ -422,7 +422,7 @@ class GantryCraneConnector(Node):
             while self.variables_value[variable_name] is None:
                 self.update()
                 time.sleep(0.1)
-            self.get_logger().info("..."+ variable_name + " messages received")
+            self.get_logger().info("..." + variable_name + " messages received")
 
         self.get_logger().info("All messages received")
 
@@ -433,8 +433,16 @@ class GantryCraneConnector(Node):
             self.variables_value["trolley_position"] > MIN_TROLLEY_POSITION + 0.01
             or time.time() - start_time < MODES_TIMEOUT
         ):
+            if (
+                abs(self.variables_value["trolley_position"] - MIN_TROLLEY_POSITION)
+                < 0.01
+                and abs(self.variables_first_derivative["trolley_position"]) < 0.01
+            ):
+                break
+
             self.publish_command(GantryControlModes.MOVE_TO_ORIGIN_MODE, 0, 0)
-            self.update()
+
+        self.brake(brake_trolley=True, brake_hoist=False)
 
         return True
 
@@ -446,11 +454,10 @@ class GantryCraneConnector(Node):
                 self.variables_value["trolley_position"]
                 - (MAX_TROLLEY_POSITION + MIN_TROLLEY_POSITION) / 2
             )
-            > 0.05
+            > 0.03
             or time.time() - start_time < MODES_TIMEOUT
         ):
             self.publish_command(GantryControlModes.MOVE_TO_MIDDLE_MODE, 0, 0)
-            self.update()
 
         self.brake(brake_trolley=True, brake_hoist=False)
 
@@ -463,8 +470,14 @@ class GantryCraneConnector(Node):
             self.variables_value["trolley_position"] < MAX_TROLLEY_POSITION - 0.01
             or time.time() - start_time < MODES_TIMEOUT
         ):
+            if (
+                abs(self.variables_value["trolley_position"] - MAX_TROLLEY_POSITION)
+                < 0.01
+                and abs(self.variables_first_derivative["trolley_position"]) < 0.01
+            ):
+                break
+            
             self.publish_command(GantryControlModes.MOVE_TO_END_MODE, 0, 0)
-            self.update()
 
         return True
 
@@ -473,7 +486,6 @@ class GantryCraneConnector(Node):
         start_time = time.time()
         while time.time() - start_time < MODES_TIMEOUT:
             self.publish_command(GantryControlModes.LOCK_CONTAINER_MODE, 0, 0)
-            self.update()
             time.sleep(0.1)
 
         return True
@@ -483,7 +495,6 @@ class GantryCraneConnector(Node):
         start_time = time.time()
         while time.time() - start_time < MODES_TIMEOUT:
             self.publish_command(GantryControlModes.UNLOCK_CONTAINER_MODE, 0, 0)
-            self.update()
             time.sleep(0.1)
 
         return True
@@ -492,7 +503,6 @@ class GantryCraneConnector(Node):
         self.publish_command(
             GantryControlModes.CONTROL_MODE, trolley_motor_pwm, hoist_motor_pwm
         )
-        self.update()
 
     def brake(self, brake_trolley=True, brake_hoist=True):
         self.get_logger().info("Braking...")
@@ -510,13 +520,12 @@ class GantryCraneConnector(Node):
             self.publish_command(
                 GantryControlModes.CONTROL_MODE, trolley_pwm_flag, hoist_pwm_flag
             )
-            self.update()
 
     def idle(self):
         self.get_logger().info("Idling...")
         for i in range(10):
             self.publish_command(GantryControlModes.IDLE_MODE, 0, 0)
-            self.update()
+        time.sleep(0.5)
 
     def hoist_container_to_top(self):
         self.initialize_variables()
@@ -533,7 +542,6 @@ class GantryCraneConnector(Node):
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            self.update()
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -542,7 +550,11 @@ class GantryCraneConnector(Node):
     def hoist_container_to_middle(self):
         self.initialize_variables()
         self.wait_for_messages()  # Wait for messages to make sure the cable length is updated
-        self.get_logger().info("Hoisting container to middle... :" +str((MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2) + " m")
+        self.get_logger().info(
+            "Hoisting container to middle... :"
+            + str((MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2)
+            + " m"
+        )
         start_time = time.time()
         while (
             abs(
@@ -560,10 +572,11 @@ class GantryCraneConnector(Node):
                 hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
-            
-            self.get_logger().info("Error : " + str(error) + " m. PWM : " + str(hoist_pwm))
+
+            self.get_logger().info(
+                "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
+            )
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            self.update()
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -584,8 +597,15 @@ class GantryCraneConnector(Node):
             else:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
-            self.update()
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
+        return True
+
+    def stop(self):
+        self.get_logger().info("Stopping gantry crane connector...")
+        self.brake(brake_trolley=True, brake_hoist=True)
+        self.idle()
+        self.get_logger().info("Gantry crane connector stopped")
+        rclpy.shutdown()
         return True

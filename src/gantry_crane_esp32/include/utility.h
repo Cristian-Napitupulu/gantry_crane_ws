@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "variable.h"
+#include "parameter.h"
 
 void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolley, int16_t &pwm_hoist)
 {
@@ -19,6 +20,24 @@ void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolle
   if (pwm_hoist & 0x800)
   {
     pwm_hoist = pwm_hoist - 0xFFF - 1;
+  }
+
+  if (pwm_trolley > TROLLEY_MOTOR_PWM_MAX)
+  {
+    pwm_trolley = TROLLEY_MOTOR_PWM_MAX;
+  }
+  else if (pwm_trolley < -TROLLEY_MOTOR_PWM_MAX)
+  {
+    pwm_trolley = -TROLLEY_MOTOR_PWM_MAX;
+  }
+
+  if (pwm_hoist > HOIST_MOTOR_PWM_MAX)
+  {
+    pwm_hoist = HOIST_MOTOR_PWM_MAX;
+  }
+  else if (pwm_hoist < -HOIST_MOTOR_PWM_MAX)
+  {
+    pwm_hoist = -HOIST_MOTOR_PWM_MAX;
   }
 }
 
@@ -43,10 +62,6 @@ int get_sign(int x)
   }
 }
 
-float trolleySpeed = 0;
-int32_t lastEncoderPulse = 0;
-unsigned long lastEncoderTime = 0;
-
 void checkLimitSwitch()
 {
   // Check limit switch
@@ -54,10 +69,10 @@ void checkLimitSwitch()
   {
     encoderTrolley.reset();
     limitSwitchEncoderSideState = true;
-    if (trolleyMotorPWM < 0)
-    {
-      trolleyMotorPWM = 0;
-    }
+    // if (trolleyMotorPWM < 0)
+    // {
+    //   trolleyMotorPWM = 0;
+    // }
   }
   else
   {
@@ -66,12 +81,12 @@ void checkLimitSwitch()
 
   if (limitSwitchTrolleyMotorSide.getState() == LOW)
   {
-    encoderTrolley.setPulse(ENCODER_MAX_VALUE);
+    // encoderTrolley.setPulse(ENCODER_MAX_VALUE);
     limitSwitchTrolleyMotorSideState = true;
-    if (trolleyMotorPWM > 0)
-    {
-      trolleyMotorPWM = 0;
-    }
+    // if (trolleyMotorPWM > 0)
+    // {
+    //   trolleyMotorPWM = 0;
+    // }
   }
   else
   {
@@ -84,15 +99,33 @@ void checkLimitSwitch()
     hoistMotorPWM = 0;
   }
 
-  // Protect system at high speed by reducing PWM by half
+  if (trolleyMotorPWM > TROLLEY_MOTOR_PWM_MAX)
+  {
+    trolleyMotorPWM = TROLLEY_MOTOR_PWM_MAX;
+  }
+  else if (trolleyMotorPWM < -TROLLEY_MOTOR_PWM_MAX)
+  {
+    trolleyMotorPWM = -TROLLEY_MOTOR_PWM_MAX;
+  }
+
+  if (hoistMotorPWM > HOIST_MOTOR_PWM_MAX)
+  {
+    hoistMotorPWM = HOIST_MOTOR_PWM_MAX;
+  }
+  else if (hoistMotorPWM < -HOIST_MOTOR_PWM_MAX)
+  {
+    hoistMotorPWM = -HOIST_MOTOR_PWM_MAX;
+  }
+
+  // Protect system at high speed by reducing PWM
   if ((encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
   {
-    trolleyMotorPWM = trolleyMotorPWM / 2;
+    trolleyMotorPWM = trolleyMotorPWM * 0.75;
   }
 
   if ((encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE) && (trolleyMotorPWM < -0.8 * TROLLEY_MOTOR_PWM_MAX))
   {
-    trolleyMotorPWM = trolleyMotorPWM / 2;
+    trolleyMotorPWM = trolleyMotorPWM * 0.75;
   }
 }
 

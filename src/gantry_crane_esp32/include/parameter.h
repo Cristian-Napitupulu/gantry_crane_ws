@@ -33,7 +33,7 @@
 #define CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS 10
 
 // Timeout for controller command
-#define CONTROLLER_COMMAND_TIMEOUT_MS 50
+#define CONTROLLER_COMMAND_TIMEOUT_MS 5
 
 /*Minimum and maximum PWM values
 * Minimum PWM value is the value when the motor is barely moving (dead zone)
@@ -45,17 +45,17 @@
 * Used for protection 
 */
 
-#define TROLLEY_MAX_SPEED 0.05   // m/s
+#define TROLLEY_MAX_SPEED 0.3   // m/s
 
 // Operating PWM values for trolley motor`
-#define TROLLEY_MOTOR_PWM_MAX 850
+#define TROLLEY_MOTOR_PWM_MAX 800
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Operating PWM values for hoist motor
 #define HOIST_MOTOR_PWM_MAX 1023
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 700
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 7
 
 // Encoder
 // Got from measurement

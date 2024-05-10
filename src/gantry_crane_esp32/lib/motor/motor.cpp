@@ -44,6 +44,8 @@ void Motor::setPWM(int16_t PWM)
         PWM = -this->minPWM;
     }
 
+    this->currentPWM = PWM;
+
     if (PWM > 0)
     {
         digitalWrite(this->forwardPin, HIGH);

@@ -9,35 +9,44 @@ void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolle
 {
   // Extract the values from the packed 32-bit integer
   gantry_mode = static_cast<int8_t>(packedValue & 0xFF);
-  pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
-  pwm_hoist = static_cast<int16_t>((packedValue >> 20) & 0xFFF);
 
-  // Convert two's complement representation back to negative values
-  if (pwm_trolley & 0x800)
+  if (gantry_mode < 0)
   {
-    pwm_trolley = pwm_trolley - 0xFFF - 1;
+    gantry_mode = IDLE_MODE;
   }
-  if (pwm_hoist & 0x800)
+  
+  else if (gantry_mode == CONTROL_MODE)
   {
-    pwm_hoist = pwm_hoist - 0xFFF - 1;
-  }
+    pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
+    pwm_hoist = static_cast<int16_t>((packedValue >> 20) & 0xFFF);
 
-  if (pwm_trolley > TROLLEY_MOTOR_PWM_MAX)
-  {
-    pwm_trolley = TROLLEY_MOTOR_PWM_MAX;
-  }
-  else if (pwm_trolley < -TROLLEY_MOTOR_PWM_MAX)
-  {
-    pwm_trolley = -TROLLEY_MOTOR_PWM_MAX;
-  }
+    // Convert two's complement representation back to negative values
+    if (pwm_trolley & 0x800)
+    {
+      pwm_trolley = pwm_trolley - 0xFFF - 1;
+    }
+    if (pwm_hoist & 0x800)
+    {
+      pwm_hoist = pwm_hoist - 0xFFF - 1;
+    }
 
-  if (pwm_hoist > HOIST_MOTOR_PWM_MAX)
-  {
-    pwm_hoist = HOIST_MOTOR_PWM_MAX;
-  }
-  else if (pwm_hoist < -HOIST_MOTOR_PWM_MAX)
-  {
-    pwm_hoist = -HOIST_MOTOR_PWM_MAX;
+    if (pwm_trolley > TROLLEY_MOTOR_PWM_MAX)
+    {
+      pwm_trolley = TROLLEY_MOTOR_PWM_MAX;
+    }
+    else if (pwm_trolley < -TROLLEY_MOTOR_PWM_MAX)
+    {
+      pwm_trolley = -TROLLEY_MOTOR_PWM_MAX;
+    }
+
+    if (pwm_hoist > HOIST_MOTOR_PWM_MAX)
+    {
+      pwm_hoist = HOIST_MOTOR_PWM_MAX;
+    }
+    else if (pwm_hoist < -HOIST_MOTOR_PWM_MAX)
+    {
+      pwm_hoist = -HOIST_MOTOR_PWM_MAX;
+    }
   }
 }
 
@@ -69,10 +78,10 @@ void checkLimitSwitch()
   {
     encoderTrolley.reset();
     limitSwitchEncoderSideState = true;
-    // if (trolleyMotorPWM < 0)
-    // {
-    //   trolleyMotorPWM = 0;
-    // }
+    if (trolleyMotorPWM < 0)
+    {
+      trolleyMotorPWM = 0;
+    }
   }
   else
   {
@@ -81,8 +90,8 @@ void checkLimitSwitch()
 
   if (limitSwitchTrolleyMotorSide.getState() == LOW)
   {
-    // encoderTrolley.setPulse(ENCODER_MAX_VALUE);
     limitSwitchTrolleyMotorSideState = true;
+    // encoderTrolley.setPulse(ENCODER_MAX_VALUE);
     // if (trolleyMotorPWM > 0)
     // {
     //   trolleyMotorPWM = 0;
@@ -98,7 +107,11 @@ void checkLimitSwitch()
     trolleyMotorPWM = 0;
     hoistMotorPWM = 0;
   }
+}
 
+void safetyCheck()
+{
+  // Check trolley motor PWM value
   if (trolleyMotorPWM > TROLLEY_MOTOR_PWM_MAX)
   {
     trolleyMotorPWM = TROLLEY_MOTOR_PWM_MAX;
@@ -108,6 +121,7 @@ void checkLimitSwitch()
     trolleyMotorPWM = -TROLLEY_MOTOR_PWM_MAX;
   }
 
+  // Check hoist motor PWM value
   if (hoistMotorPWM > HOIST_MOTOR_PWM_MAX)
   {
     hoistMotorPWM = HOIST_MOTOR_PWM_MAX;
@@ -118,14 +132,14 @@ void checkLimitSwitch()
   }
 
   // Protect system at high speed by reducing PWM
-  if ((encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)) && (trolleyMotorPWM > 0.8 * TROLLEY_MOTOR_PWM_MAX))
+  if ((trolleySpeed > 0.5 * TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)))
   {
-    trolleyMotorPWM = trolleyMotorPWM * 0.75;
+    trolleyMotorPWM = trolleyMotorPWM * 0.8;
   }
 
-  if ((encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE) && (trolleyMotorPWM < -0.8 * TROLLEY_MOTOR_PWM_MAX))
+  if ((trolleySpeed < -0.5 * TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE))
   {
-    trolleyMotorPWM = trolleyMotorPWM * 0.75;
+    trolleyMotorPWM = trolleyMotorPWM * 0.8;
   }
 }
 

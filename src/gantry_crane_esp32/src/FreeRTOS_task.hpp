@@ -24,6 +24,8 @@ void spinMicroROS(void *parameter)
 
         checkLimitSwitch();
 
+        safetyCheck();
+
         volatile unsigned long positionTime = millis();
         trolleyPosition = encoderTrolley.getPosition();
         trolleySpeed = (trolleyPosition - lastTrolleyPosition) / (positionTime - lastPositionTime) * 1000.0f;
@@ -40,7 +42,6 @@ void spinMicroROS(void *parameter)
 
 void findOrigin(void *parameter)
 {
-    
     while (limitSwitchEncoderSide.getState() != LOW)
     {
         ledBuiltIn.blink(100);

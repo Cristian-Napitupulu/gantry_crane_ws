@@ -58,13 +58,19 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 }
 
 u_int32_t controller_command_last_call_time = 0;
+int8_t last_gantry_mode = IDLE_MODE;
 void controllerCommandHandler();
 void controllerCommandCallback(const void *msgin)
 {
   const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   controllerCommandHandler();
-  controller_command_last_call_time = millis();
+
+  if (last_gantry_mode != CONTROL_MODE && gantryMode == CONTROL_MODE)
+  {
+    controller_command_last_call_time = millis();
+  }
+  last_gantry_mode = gantryMode;
 }
 
 void controllerCommandHandler()
@@ -93,10 +99,10 @@ void controllerCommandHandler()
   {
     trolleyMotorPWM = 0;
   }
-  if (limitSwitchTrolleyMotorSideState && trolleyMotorPWM > 0)
-  {
-    trolleyMotorPWM = 0;
-  }
+  // if (limitSwitchTrolleyMotorSideState && trolleyMotorPWM > 0)
+  // {
+  //   trolleyMotorPWM = 0;
+  // }
 }
 
 void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
@@ -114,7 +120,7 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
       trolleyMotorVoltage = 0;
     }
     // trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
-    trolleyMotorVoltageMessage.data = trolleyMotorPWM;
+    trolleyMotorVoltageMessage.data = trolleyMotor.currentPWM;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
     lastTrolleyMotorVoltage = trolleyMotorVoltage;
     if ((trolleyMotorPWM >= 0) || (lastTrolleyMotorVoltage > -0.5))
@@ -182,7 +188,7 @@ void initControllerCommandSubscriber()
 
   // motor PWM executor init
   RCCHECK(rclc_executor_init(&controllerCommandExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_subscription(&controllerCommandExecutor, &controllerCommandSubscriber, &controllerCommandMessage, &controllerCommandCallback, ALWAYS));
+  RCCHECK(rclc_executor_add_subscription(&controllerCommandExecutor, &controllerCommandSubscriber, &controllerCommandMessage, &controllerCommandCallback, ON_NEW_DATA));
 }
 
 void initTrolleyMotorVoltagePublisher()

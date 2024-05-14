@@ -9,19 +9,14 @@
 #include "microROS.hpp"
 #include "ADC.hpp"
 
+bool microROSinitialized = false;
 volatile unsigned long lastPositionTime = 0;
 void spinMicroROS(void *parameter)
 {
-    initmicroROSSemaphore = xSemaphoreCreateBinary();
-
     microROSInit();
-
-    xSemaphoreGive(initmicroROSSemaphore);
 
     for (;;)
     {
-        ledBuiltIn.blink(300);
-
         checkLimitSwitch();
 
         safetyCheck();
@@ -37,31 +32,49 @@ void spinMicroROS(void *parameter)
         RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
         RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
         RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+
+        microROSinitialized = true;
     }
 }
 
+uint64_t findOrigin_time = 0;
 void findOrigin(void *parameter)
 {
-    while (limitSwitchEncoderSide.getState() != LOW)
+    findOrigin_time = millis();
+    trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+    while (limitSwitchEncoderSideState == false)
     {
+        if (millis() - findOrigin_time > 100)
+        {
+            findOrigin_time = millis();
+
+            if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
+            {
+                trolleyMotorPWM += -10;
+            }
+
+            if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
+            {
+                trolleyMotorPWM += 1;
+            }
+        }
         ledBuiltIn.blink(100);
-        Serial.println("Finding origin");
-        trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+        Serial.println("");
         trolleyMotor.setPWM(trolleyMotorPWM);
     }
 
     trolleyMotorPWM = 0;
     trolleyMotor.setPWM(trolleyMotorPWM);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     for (int i = 0; i < 2; i++)
     {
-        for (int i = -0.8 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i > -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 50); i--)
+        for (int i = -0.8 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i > -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 75); i--)
         {
             trolleyMotorPWM = i;
             trolleyMotor.setPWM(trolleyMotorPWM);
-            vTaskDelay(pdMS_TO_TICKS(2));
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
 
         trolleyMotorPWM = 0;
@@ -70,11 +83,20 @@ void findOrigin(void *parameter)
     }
 }
 
+void check_timeout()
+{
+    if (millis() - controller_command_last_call_time > CONTROLLER_COMMAND_TIMEOUT_MS)
+    {
+        gantryMode = IDLE_MODE;
+    }
+}
+
 void controllerCommandTask(void *parameter)
 {
-    while (xSemaphoreTake(initmicroROSSemaphore, portMAX_DELAY) != pdTRUE)
+    while (microROSinitialized == false)
     {
         // Wait for microROS to be initialized
+        ledBuiltIn.blink(100);
     }
 
     findOrigin(NULL);
@@ -83,6 +105,8 @@ void controllerCommandTask(void *parameter)
 
     for (;;)
     {
+        ledBuiltIn.blink(300);
+
         if (brakeTrolleyMotor)
         {
             trolleyMotorPWM = 0;
@@ -93,9 +117,9 @@ void controllerCommandTask(void *parameter)
 
         if (brakeHoistMotor)
         {
-            hoistMotorPWM = 0;
+            hoistMotorPWM = HOLD_HOIST_MOTOR_PWM;
             hoistMotor.setPWM(hoistMotorPWM);
-            hoistMotor.brake();
+            // hoistMotor.brake();
             brakeHoistMotor = false;
         }
 
@@ -111,25 +135,14 @@ void controllerCommandTask(void *parameter)
         else if (gantryMode == CONTROL_MODE)
         {
             // Control gantry
-            u_int32_t current_time = millis();
-            if (current_time - controller_command_last_call_time > CONTROLLER_COMMAND_TIMEOUT_MS)
-            {
-                gantryMode = IDLE_MODE;
-            }
+            check_timeout();
         }
-        else if (gantryMode == LOCK_CONTAINER_MODE)
-        {
-            // Lock container
-            // Add code specific to LOCK_CONTAINER_MODE
-        }
-        else if (gantryMode == UNLOCK_CONTAINER_MODE)
-        {
-            // Unlock container
-            // Add code specific to UNLOCK_CONTAINER_MODE
-        }
+
         else if (gantryMode == MOVE_TO_ORIGIN_MODE)
         {
-            if (limitSwitchEncoderSide.getState() != LOW)
+            check_timeout();
+
+            if (limitSwitchEncoderSideState == false || fabs(trolleyPosition) > 0.005)
             {
                 trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
                 hoistMotorPWM = 0;
@@ -142,6 +155,8 @@ void controllerCommandTask(void *parameter)
         }
         else if (gantryMode == MOVE_TO_MIDDLE_MODE)
         {
+            check_timeout();
+
             trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM * get_sign(ENCODER_MAX_VALUE / 2 - encoderTrolley.getPulse());
             hoistMotorPWM = 0;
 
@@ -154,7 +169,9 @@ void controllerCommandTask(void *parameter)
 
         else if (gantryMode == MOVE_TO_END_MODE)
         {
-            if (limitSwitchTrolleyMotorSide.getState() != LOW)
+            check_timeout();
+
+            if (limitSwitchTrolleyMotorSideState == false)
             {
                 trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
                 hoistMotorPWM = 0;
@@ -165,6 +182,18 @@ void controllerCommandTask(void *parameter)
                 gantryMode = IDLE_MODE;
             }
         }
+
+        // else if (gantryMode == LOCK_CONTAINER_MODE)
+        // {
+        //     // Lock container
+        //     // Add code specific to LOCK_CONTAINER_MODE
+        // }
+        // else if (gantryMode == UNLOCK_CONTAINER_MODE)
+        // {
+        //     // Unlock container
+        //     // Add code specific to UNLOCK_CONTAINER_MODE
+        // }
+
         else
         {
             gantryMode = IDLE_MODE;

@@ -33,7 +33,7 @@ void setup()
   xTaskCreatePinnedToCore(
       spinMicroROS,
       "microROS spin task",
-      30000,
+      40000,
       NULL,
       1,
       &spinMicroROSTaskHandle,
@@ -44,9 +44,9 @@ void setup()
   xTaskCreatePinnedToCore(
       controllerCommandTask,
       "Controller command task",
-      30000,
+      20000,
       NULL,
-      0,
+      1,
       &controllerCommandTaskHandle,
       1);
 }

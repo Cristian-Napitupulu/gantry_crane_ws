@@ -29,24 +29,6 @@ void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolle
     {
       pwm_hoist = pwm_hoist - 0xFFF - 1;
     }
-
-    if (pwm_trolley > TROLLEY_MOTOR_PWM_MAX)
-    {
-      pwm_trolley = TROLLEY_MOTOR_PWM_MAX;
-    }
-    else if (pwm_trolley < -TROLLEY_MOTOR_PWM_MAX)
-    {
-      pwm_trolley = -TROLLEY_MOTOR_PWM_MAX;
-    }
-
-    if (pwm_hoist > HOIST_MOTOR_PWM_MAX)
-    {
-      pwm_hoist = HOIST_MOTOR_PWM_MAX;
-    }
-    else if (pwm_hoist < -HOIST_MOTOR_PWM_MAX)
-    {
-      pwm_hoist = -HOIST_MOTOR_PWM_MAX;
-    }
   }
 }
 
@@ -102,35 +84,15 @@ void checkLimitSwitch()
     limitSwitchTrolleyMotorSideState = false;
   }
 
-  if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
-  {
-    trolleyMotorPWM = 0;
-    hoistMotorPWM = 0;
-  }
+  // if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
+  // {
+  //   trolleyMotorPWM = 0;
+  //   hoistMotorPWM = 0;
+  // }
 }
 
 void safetyCheck()
 {
-  // Check trolley motor PWM value
-  if (trolleyMotorPWM > TROLLEY_MOTOR_PWM_MAX)
-  {
-    trolleyMotorPWM = TROLLEY_MOTOR_PWM_MAX;
-  }
-  else if (trolleyMotorPWM < -TROLLEY_MOTOR_PWM_MAX)
-  {
-    trolleyMotorPWM = -TROLLEY_MOTOR_PWM_MAX;
-  }
-
-  // Check hoist motor PWM value
-  if (hoistMotorPWM > HOIST_MOTOR_PWM_MAX)
-  {
-    hoistMotorPWM = HOIST_MOTOR_PWM_MAX;
-  }
-  else if (hoistMotorPWM < -HOIST_MOTOR_PWM_MAX)
-  {
-    hoistMotorPWM = -HOIST_MOTOR_PWM_MAX;
-  }
-
   // Protect system at high speed by reducing PWM
   if ((trolleySpeed > 0.5 * TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)))
   {
@@ -141,6 +103,10 @@ void safetyCheck()
   {
     trolleyMotorPWM = trolleyMotorPWM * 0.8;
   }
+}
+
+float roundToSixDecimalPlaces(float num) {
+  return round(num * 1000000.0) / 1000000.0;
 }
 
 #endif // UTILITY_H

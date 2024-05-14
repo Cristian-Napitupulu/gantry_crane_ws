@@ -29,8 +29,9 @@ MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
 
 MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
 
-HOIST_RISE_PWM = 900  # PWM for hoist motor to rise the container
-HOIST_LOWER_PWM = 850  # PWM for hoist motor to lower the container
+HOIST_RISE_PWM = 800  # PWM for hoist motor to rise the container
+HOIST_LOWER_PWM = 800  # PWM for hoist motor to lower the container
+HOLD_HOIST_PWM = -500    
 
 
 class GantryControlModes:
@@ -381,15 +382,11 @@ class GantryCraneConnector(Node):
         self.wait_for_subscribers()
         self.reset_variable()
 
-        if slide_to_position == "origin":
-            self.move_trolley_to_origin()
-        elif slide_to_position == "middle":
-            self.move_trolley_to_middle()
-        elif slide_to_position == "end":
-            self.move_trolley_to_end()
-        else:
-            self.get_logger().info("Invalid trolley position")
-            return False
+        for i in range (10):
+            self.update()
+
+        slide_to_position = slide_to_position.lower()
+        hoist_to_position = hoist_to_position.lower()
 
         if hoist_to_position == "top":
             self.hoist_container_to_top()
@@ -399,6 +396,16 @@ class GantryCraneConnector(Node):
             self.hoist_container_to_bottom()
         else:
             self.get_logger().info("Invalid container position")
+            return False
+        
+        if slide_to_position == "origin":
+            self.move_trolley_to_origin()
+        elif slide_to_position == "middle":
+            self.move_trolley_to_middle()
+        elif slide_to_position == "end":
+            self.move_trolley_to_end()
+        else:
+            self.get_logger().info("Invalid trolley position")
             return False
 
         self.idle()
@@ -476,7 +483,7 @@ class GantryCraneConnector(Node):
                 and abs(self.variables_first_derivative["trolley_position"]) < 0.01
             ):
                 break
-            
+
             self.publish_command(GantryControlModes.MOVE_TO_END_MODE, 0, 0)
 
         return True
@@ -530,7 +537,9 @@ class GantryCraneConnector(Node):
     def hoist_container_to_top(self):
         self.initialize_variables()
         self.wait_for_messages()  # Wait for messages to make sure the cable length is updated
-        self.get_logger().info("Hoisting container to top...")
+        self.get_logger().info(
+            "Hoisting container to top... (" + str(MIN_CABLE_LENGTH) + " m)"
+        )
         start_time = time.time()
         while (
             abs(self.variables_value["cable_length"] - MIN_CABLE_LENGTH) > 0.001
@@ -539,9 +548,21 @@ class GantryCraneConnector(Node):
             error = self.variables_value["cable_length"] - MIN_CABLE_LENGTH
             if error < 0:
                 hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            else:
+            elif error > 0:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+            else:
+                hoist_pwm = 0
+
+            self.get_logger().debug(
+                "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
+            )
+
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
+
+        for i in range(10):
+            self.publish_command(
+                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
+            )
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -551,9 +572,9 @@ class GantryCraneConnector(Node):
         self.initialize_variables()
         self.wait_for_messages()  # Wait for messages to make sure the cable length is updated
         self.get_logger().info(
-            "Hoisting container to middle... :"
+            "Hoisting container to middle... ("
             + str((MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2)
-            + " m"
+            + " m)"
         )
         start_time = time.time()
         while (
@@ -570,13 +591,20 @@ class GantryCraneConnector(Node):
             )
             if error < 0:
                 hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            else:
+            elif error > 0:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+            else:
+                hoist_pwm = 0
 
-            self.get_logger().info(
+            self.get_logger().debug(
                 "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
             )
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
+
+        for i in range(10):
+            self.publish_command(
+                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
+            )
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -585,7 +613,9 @@ class GantryCraneConnector(Node):
     def hoist_container_to_bottom(self):
         self.initialize_variables()
         self.wait_for_messages()  # Wait for messages to make sure the cable length is updated
-        self.get_logger().info("Hoisting container to bottom...")
+        self.get_logger().info(
+            "Hoisting container to bottom... (" + str(MAX_CABLE_LENGTH) + " m)"
+        )
         start_time = time.time()
         while (
             abs(self.variables_value["cable_length"] - MAX_CABLE_LENGTH) > 0.001
@@ -594,15 +624,27 @@ class GantryCraneConnector(Node):
             error = self.variables_value["cable_length"] - MAX_CABLE_LENGTH
             if error < 0:
                 hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            else:
+            elif error > 0:
                 hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+            else:
+                hoist_pwm = 0
+
+            self.get_logger().debug(
+                "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
+            )
+
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
+
+        for i in range(10):
+            self.publish_command(
+                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
+            )
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
         return True
 
-    def stop(self):
+    def end(self):
         self.get_logger().info("Stopping gantry crane connector...")
         self.brake(brake_trolley=True, brake_hoist=True)
         self.idle()

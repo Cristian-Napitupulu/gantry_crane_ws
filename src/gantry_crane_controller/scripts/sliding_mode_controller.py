@@ -395,14 +395,15 @@ class Controller:
                 [self.gantry_crane_object.variables_value["cable_length"]],
             ]
         )
-        print(
-            "Desired state vector: {}, {}. State vector: {}, {}.".format(
-                desiredStateVector[0, 0],
-                desiredStateVector[1, 0],
-                stateVector[0, 0],
-                stateVector[1, 0],
-            )
-        )
+        # print(
+        #     "Desired state vector: {}, {}. State vector: {}, {}.".format(
+        #         desiredStateVector[0, 0],
+        #         desiredStateVector[1, 0],
+        #         stateVector[0, 0],
+        #         stateVector[1, 0],
+        #     )
+        # )
+        
         stateVectorFirstDerivative = np.matrix(
             [
                 [
@@ -424,14 +425,14 @@ class Controller:
                 [self.gantry_crane_object.variables_second_derivative["cable_length"]],
             ]
         )
-        print(
-            "State vector first derivative: {}, {}. State vector second derivative: {}, {}.".format(
-                stateVectorFirstDerivative[0, 0],
-                stateVectorFirstDerivative[1, 0],
-                stateVectorSecondDerivative[0, 0],
-                stateVectorSecondDerivative[1, 0],
-            )
-        )
+        # print(
+        #     "State vector first derivative: {}, {}. State vector second derivative: {}, {}.".format(
+        #         stateVectorFirstDerivative[0, 0],
+        #         stateVectorFirstDerivative[1, 0],
+        #         stateVectorSecondDerivative[0, 0],
+        #         stateVectorSecondDerivative[1, 0],
+        #     )
+        # )
 
         # Sliding surface
         slidingSurface = np.matrix([[0.0], [0.0]])
@@ -475,7 +476,7 @@ class Controller:
             self.matrix_k, np.sign(np.multiply(self.matrix_gamma, slidingSurface))
         )
 
-        print("Control now: {}, {}.".format(control_now[0, 0], control_now[1, 0]))
+        # print("Control now: {}, {}.".format(control_now[0, 0], control_now[1, 0]))
 
         self.control_signal_trolley = control_now[0, 0]
         self.control_signal_hoist = control_now[1, 0]

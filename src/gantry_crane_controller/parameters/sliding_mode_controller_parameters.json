@@ -15,11 +15,11 @@
                 "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
             "matrix_k": {
-                "value": [[8.5], [11.0]],
+                "value": [[8.20], [11.0]],
                 "description": "Matrix K: [[k1], [k2]]"
             },
             "matrix_gamma": {
-                "value": [[3.0], [2.50]],
+                "value": [[4.0], [2.50]],
                 "description": "Matrix Gamma: [[gamma1], [gamma2]]"
             },
             "trolley_control_input_range": {

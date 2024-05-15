@@ -45,7 +45,7 @@
 * Used for protection 
 */
 
-#define TROLLEY_MAX_SPEED 0.7   // m/s
+#define TROLLEY_MAX_SPEED 0.4   // m/s
 
 // Operating PWM values for trolley motor`
 #define TROLLEY_MOTOR_PWM_MAX 800
@@ -55,8 +55,8 @@
 #define HOIST_MOTOR_PWM_MAX 1023
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 690
-#define HOLD_HOIST_MOTOR_PWM -500
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 650
+#define HOLD_HOIST_MOTOR_PWM -200
 
 // Encoder
 // Got from measurement

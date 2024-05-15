@@ -106,23 +106,14 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float trolleyMotorVoltage_ = trolleyMotorVoltage * 3.173492867;
-    if (trolleyMotorPWM < 0 || trolleySpeed < 0 || lastTrolleyMotorVoltage < 0.0)
+    if (trolleyMotorPWM < 0 || trolleySpeed < 0) // || lastTrolleyMotorVoltage < 0.0)
     {
       trolleyMotorVoltage = -fabs(trolleyMotorVoltage);
     }
-    if (fabs(trolleyMotorVoltage) < 0.005)
-    {
-      trolleyMotorVoltage = 0;
-    }
-    trolleyMotorVoltageMessage.data = roundToSixDecimalPlaces(trolleyMotorVoltage_);
+    float trolleyMotorVoltage_ = trolleyMotorVoltage * 3.173492867;
+    trolleyMotorVoltageMessage.data = roundToThreeDecimalPlaces(trolleyMotorVoltage_);
     // trolleyMotorVoltageMessage.data = trolleyMotor.currentPWM;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
-    lastTrolleyMotorVoltage = trolleyMotorVoltage;
-    if ((trolleyMotorPWM >= 0) || (lastTrolleyMotorVoltage > -0.5))
-    {
-      lastTrolleyMotorVoltage = 0;
-    }
   }
 }
 
@@ -131,26 +122,16 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float hoistMotorVoltage_ = hoistMotorVoltage * 3.13675602;
-    if (hoistMotorPWM < 0 || lastHoistMotorVoltage < 0.0)
+    
+    if (hoistMotorPWM < 0) // || lastHoistMotorVoltage < 0.0)
     {
       hoistMotorVoltage = -fabs(hoistMotorVoltage);
     }
-    if (fabs(hoistMotorVoltage) < 0.005)
-    {
-      hoistMotorVoltage = 0;
-    }
-    lastHoistMotorVoltage = hoistMotorVoltage;
-    if ((hoistMotorPWM >= 0) || (lastHoistMotorVoltage > -0.5))
-    {
-      lastHoistMotorVoltage = 0;
-    }
-
-    hoistMotorVoltageMessage.data = roundToSixDecimalPlaces(hoistMotorVoltage_);
-    // hoistMotorVoltageMessage.data = hoistMotor.currentPWM;
+    float hoistMotorVoltage_ = hoistMotorVoltage * 3.13675602;
+    hoistMotorVoltageMessage.data = roundToThreeDecimalPlaces(hoistMotorVoltage_);
+    // hoistMotorVoltageMessage.data = trolleyMotor.currentPWM;
+    // hoistMotorVoltageMessage.data = trolleySpeed;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
-    
-    
   }
 }
 

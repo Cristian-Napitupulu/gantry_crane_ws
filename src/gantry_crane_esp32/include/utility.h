@@ -14,7 +14,7 @@ void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolle
   {
     gantry_mode = IDLE_MODE;
   }
-  
+
   else if (gantry_mode == CONTROL_MODE)
   {
     pwm_trolley = static_cast<int16_t>((packedValue >> 8) & 0xFFF);
@@ -91,22 +91,29 @@ void checkLimitSwitch()
   // }
 }
 
+uint64_t safetyCheckTimer = 0;
 void safetyCheck()
 {
-  // Protect system at high speed by reducing PWM
-  if ((trolleySpeed > 0.5 * TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.8 * ENCODER_MAX_VALUE)))
+  if (millis() - safetyCheckTimer > 25)
   {
-    trolleyMotorPWM = trolleyMotorPWM * 0.8;
-  }
+    // Protect system at high speed by reducing PWM
+    if ((trolleySpeed > TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.875 * ENCODER_MAX_VALUE)))
+    {
+      trolleyMotorPWM = trolleyMotorPWM * 0.995;
+    }
 
-  if ((trolleySpeed < -0.5 * TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() < 0.2 * ENCODER_MAX_VALUE))
-  {
-    trolleyMotorPWM = trolleyMotorPWM * 0.8;
+    if ((trolleySpeed < -TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() < 0.125 * ENCODER_MAX_VALUE))
+    {
+      trolleyMotorPWM = trolleyMotorPWM * 0.995;
+    }
+
+    safetyCheckTimer = millis();
   }
 }
 
-float roundToSixDecimalPlaces(float num) {
-  return round(num * 1000000.0) / 1000000.0;
+float roundToThreeDecimalPlaces(float num)
+{
+  return round(num * 1000.0) / 1000.0;
 }
 
 #endif // UTILITY_H

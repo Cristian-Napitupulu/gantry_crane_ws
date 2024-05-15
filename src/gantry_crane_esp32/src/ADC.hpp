@@ -60,7 +60,7 @@ void analogToDigitalConverterInit()
   analogToDigitalConverter.setVoltageRange_mV(ADS1115_RANGE_4096);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_0_GND);
   analogToDigitalConverter.setCompareChannels(ADS1115_COMP_1_GND);
-  analogToDigitalConverter.setConvRate(ADS1115_64_SPS);
+  // analogToDigitalConverter.setConvRate(ADS1115_64_SPS);
   analogToDigitalConverter.setMeasureMode(ADS1115_CONTINUOUS);
 }
 
@@ -68,7 +68,7 @@ float readChannel(ADS1115_MUX channel) {
   float voltage = 0.0;
   analogToDigitalConverter.setCompareChannels(channel);
   voltage = analogToDigitalConverter.getResult_V();
-  if (voltage < 0.005) {
+  if (voltage < 0.05) {
     voltage = 0.0;
   }
   return voltage;

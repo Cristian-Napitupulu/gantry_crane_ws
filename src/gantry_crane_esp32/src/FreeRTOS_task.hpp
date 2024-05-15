@@ -46,17 +46,17 @@ void findOrigin(void *parameter)
     {
         if (millis() - findOrigin_time > 100)
         {
-            findOrigin_time = millis();
-
             if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
             {
                 trolleyMotorPWM += -10;
             }
 
-            if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
+            else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
             {
                 trolleyMotorPWM += 1;
             }
+
+            findOrigin_time = millis();
         }
         ledBuiltIn.blink(100);
         Serial.println("");
@@ -91,6 +91,7 @@ void check_timeout()
     }
 }
 
+bool stated_once = false;
 void controllerCommandTask(void *parameter)
 {
     while (microROSinitialized == false)
@@ -130,6 +131,8 @@ void controllerCommandTask(void *parameter)
             hoistMotorPWM = 0;
             lastTrolleyMotorVoltage = 0;
             lastHoistMotorVoltage = 0;
+
+            stated_once = false;
         }
 
         else if (gantryMode == CONTROL_MODE)
@@ -144,8 +147,27 @@ void controllerCommandTask(void *parameter)
 
             if (limitSwitchEncoderSideState == false || fabs(trolleyPosition) > 0.005)
             {
-                trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
-                hoistMotorPWM = 0;
+                if (!stated_once)
+                {
+                    trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+                    hoistMotorPWM = 0;
+                    stated_once = true;
+                }
+
+                if (millis() - findOrigin_time > 100)
+                {
+                    findOrigin_time = millis();
+
+                    if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += -10;
+                    }
+
+                    else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += 1;
+                    }
+                }
             }
             else
             {
@@ -173,8 +195,27 @@ void controllerCommandTask(void *parameter)
 
             if (limitSwitchTrolleyMotorSideState == false)
             {
-                trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
-                hoistMotorPWM = 0;
+                if (!stated_once)
+                {
+                    trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+                    hoistMotorPWM = 0;
+                    stated_once = true;
+                }
+
+                if (millis() - findOrigin_time > 100)
+                {
+                    findOrigin_time = millis();
+
+                    if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += 10;
+                    }
+
+                    else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += -1;
+                    }
+                }
             }
             else
             {

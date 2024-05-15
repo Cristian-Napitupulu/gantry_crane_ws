@@ -5,10 +5,7 @@ from gantry_crane_lib.logger import Logger
 
 from sliding_mode_controller import non_linear_motor_model, sliding_mode_controller
 
-import rclpy
 import time
-
-import numpy as np
 
 gantry_crane_connector = GantryCraneConnector()
 
@@ -189,18 +186,6 @@ def create_plot():
         "cable_length_second_derivative",
         "timestamp",
         "cable_length_second_derivative",
-    )
-
-    gantry_crane_logger.create_plot(
-        "trolley_motor_voltage vs trolley_position",
-        "trolley_motor_voltage",
-        "trolley_position",
-    )
-
-    gantry_crane_logger.create_plot(
-        "hoist_motor_voltage vs cable_length",
-        "hoist_motor_voltage",
-        "cable_length",
     )
 
     gantry_crane_logger.create_plot(
@@ -462,41 +447,34 @@ if __name__ == "__main__":
         # Begin logger timer
         gantry_crane_logger.reset_timer()
 
-        gantry_crane_connector.hoist_container_to_top()
-
-        gantry_crane_connector.move_trolley_to_middle()
-
-        gantry_crane_connector.hoist_container_to_bottom()
-
-        gantry_crane_connector.hoist_container_to_top()
-
-        gantry_crane_connector.move_trolley_to_origin()
-
-        # for i in range(1):
-        #     gantry_crane_connector.control(-300,0)
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep trolley motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_trolley_motor_pwm(pwm_range=[0, 750], increment=2, timeout_sec=0.10)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_trolley_data_1_increment.xlsx"
-        #     )
-        #     gantry_crane_logger.reset_buffers()
+        for i in range(3):
+            gantry_crane_connector.move_trolley_to_origin()
+            gantry_crane_connector.idle()
+            time.sleep(5.0)
+            # Sweep trolley motor PWM
+            gantry_crane_logger.reset_timer()
+            sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=10, timeout_sec=0.25)
+            gantry_crane_logger.write_buffers_to_excel(
+                gantry_crane_controller.get_name()
+                + "_rising_sweep_trolley_data_1_increment.xlsx"
+            )
+            create_plot()
+            gantry_crane_logger.reset_buffers()
 
         # gantry_crane_connector.move_trolley_to_middle()
-        # for i in range(1):
+        # for i in range(2):
         #     gantry_crane_connector.hoist_container_to_bottom()
         #     gantry_crane_connector.idle()
         #     time.sleep(5.0)
         #     # Sweep hoist motor PWM
         #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[0, -500], increment=-10, timeout_sec=0.90)
+        #     sweep_hoist_motor_pwm(pwm_range=[0, -600], increment=-10, timeout_sec=0.90)
+        #     gantry_crane_connector.brake()
         #     gantry_crane_logger.write_buffers_to_excel(
         #         gantry_crane_controller.get_name()
         #         + "_falling_sweep_hoist_data_1_increment.xlsx"
         #     )
+        #     create_plot()
         #     gantry_crane_logger.reset_buffers()
 
         
@@ -621,8 +599,6 @@ if __name__ == "__main__":
         # gantry_crane_logger.write_buffers_to_excel(
         #     gantry_crane_controller.get_name() + "_sweep_trolley_data.xlsx"
         # )
-
-        # create_plot()
 
     except KeyboardInterrupt:
         pass

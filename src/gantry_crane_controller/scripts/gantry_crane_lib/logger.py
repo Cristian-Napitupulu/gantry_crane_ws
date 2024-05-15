@@ -6,7 +6,7 @@ import time
 
 
 class Logger:
-    def __init__(self, parent_folder_path):
+    def __init__(self, parent_folder_path:str):
         self.parent_folder_path = parent_folder_path
         self.buffers = {}
         self.reset_timer()
@@ -21,7 +21,7 @@ class Logger:
         folder_name = datetime.now().strftime("%Y-%m-%d/%H-%M-%S")
         self.folder_path = os.path.join(self.parent_folder_path, folder_name)
 
-    def write_buffers_to_excel(self, file_name, sheet_name='Sheet1'):
+    def write_buffers_to_excel(self, file_name:str, sheet_name='Sheet1'):
         if not os.path.exists(self.folder_path):
             os.makedirs(self.folder_path)
 
@@ -46,14 +46,14 @@ class Logger:
             # If the file doesn't exist, create a new Excel file with the specified sheet name
             pd.DataFrame(self.buffers).to_excel(file_path, index=False, sheet_name=sheet_name)
 
-    def create_plot(self, variable_name, x_variable_name, y_variable_name):
+    def create_plot(self, plot_title:str, x_variable_name, y_variable_name):
         x = self.buffers[x_variable_name]
         y = self.buffers[y_variable_name]
         plt.plot(x, y)
         plt.xlabel(x_variable_name)
         plt.ylabel(y_variable_name)
-        plt.title(variable_name)
-        plot_path = os.path.join(self.folder_path, variable_name + ".png")
+        plt.title(plot_title)
+        plot_path = os.path.join(self.folder_path, plot_title + ".png")
         plt.savefig(plot_path)
         plt.close()
 
@@ -66,7 +66,7 @@ class Logger:
     def reset_buffers(self):
         self.buffers = {}
 
-    def create_live_plot_from_buffers(self, x_variable_name, y_variable_name):
+    def create_live_plot_from_buffers(self, x_variable_name:str, y_variable_name:str):
         x = self.buffers[x_variable_name]
         y = self.buffers[y_variable_name]
         plt.plot(x, y)

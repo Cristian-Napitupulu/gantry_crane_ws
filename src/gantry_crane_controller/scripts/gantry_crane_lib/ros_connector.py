@@ -25,13 +25,15 @@ MAX_TROLLEY_POSITION = 1.5  # Maximum trolley position in meters
 MIN_TROLLEY_POSITION = 0.0  # Minimum trolley position in meters
 
 MAX_CABLE_LENGTH = 0.65  # Maximum cable length in meters
-MIN_CABLE_LENGTH = 0.45  # Minimum cable length in meters
+MIN_CABLE_LENGTH = 0.40  # Minimum cable length in meters
 
 MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
 
 HOIST_RISE_PWM = 800  # PWM for hoist motor to rise the container
 HOIST_LOWER_PWM = 800  # PWM for hoist motor to lower the container
-HOLD_HOIST_PWM = -500    
+HOLD_HOIST_PWM = -500
+
+ROUNDING_DIGITS = 5  # Number of digits to round the values
 
 
 class GantryControlModes:
@@ -44,6 +46,7 @@ class GantryControlModes:
         0x5F  # Unlock container mode, move servo to unlock container
     )
     CONTROL_MODE = 0x6F  # Control mode, control trolley and hoist motors
+    BRAKE_MODE = 0x7F # Brake mode, stop either trolley or hoist motor
     PWM_BRAKE_FLAG = 0x7FF  # Brake command, flag to stop either trolley or hoist motor
 
 
@@ -148,32 +151,45 @@ class GantryCraneConnector(Node):
             )  # Convert to radians and round to 3 decimal places, resolution of the LIDAR
 
         if variable_name == "trolley_motor_voltage":
-            value = round(value, 5)  # Round to 5 decimal places: resolution of the DAC
+            value = round(
+                value, 5
+            )  # Round to 5 decimal places: resolution of the DAC
 
         if variable_name == "hoist_motor_voltage":
-            value = round(value, 5)  # Round to 5 decimal places: resolution of the DAC
+            value = round(
+                value, 5
+            )  # Round to 5 decimal places: resolution of the DAC
 
         self.variables_value[variable_name] = value  # Update value
 
         # Calculate first derivative
-        self.variables_first_derivative[variable_name] = self.calculate_derivative(
-            self.variables_value[variable_name],
-            self.last_variables_value[variable_name],
-            delta_time,
+        self.variables_first_derivative[variable_name] = round(
+            self.calculate_derivative(
+                self.variables_value[variable_name],
+                self.last_variables_value[variable_name],
+                delta_time,
+            ),
+            ROUNDING_DIGITS,
         )
 
         # Calculate second derivative
-        self.variables_second_derivative[variable_name] = self.calculate_derivative(
-            self.variables_first_derivative[variable_name],
-            self.last_variables_first_derivative[variable_name],
-            delta_time,
+        self.variables_second_derivative[variable_name] = round(
+            self.calculate_derivative(
+                self.variables_first_derivative[variable_name],
+                self.last_variables_first_derivative[variable_name],
+                delta_time,
+            ),
+            ROUNDING_DIGITS,
         )
 
         # Calculate third derivative
-        self.variables_third_derivative[variable_name] = self.calculate_derivative(
-            self.variables_second_derivative[variable_name],
-            self.last_variables_second_derivative[variable_name],
-            delta_time,
+        self.variables_third_derivative[variable_name] = round(
+            self.calculate_derivative(
+                self.variables_second_derivative[variable_name],
+                self.last_variables_second_derivative[variable_name],
+                delta_time,
+            ),
+            ROUNDING_DIGITS,
         )
 
         # Update last values
@@ -375,6 +391,16 @@ class GantryCraneConnector(Node):
             | ((pwm_hoist_motor & 0xFFF) << 20)
         )
         return packed_value
+    
+    def initialized(self):
+        self.get_logger().info("Initializing gantry crane connector...")
+        self.wait_for_messages()
+        self.wait_for_subscribers()
+        self.reset_variable()
+        self.get_logger().info("Gantry crane connector initialized")
+        
+        return True
+
 
     def begin(self, slide_to_position="origin", hoist_to_position="middle"):
         self.get_logger().info("Beginning gantry crane connector...")
@@ -382,7 +408,7 @@ class GantryCraneConnector(Node):
         self.wait_for_subscribers()
         self.reset_variable()
 
-        for i in range (10):
+        for i in range(10):
             self.update()
 
         slide_to_position = slide_to_position.lower()
@@ -397,7 +423,7 @@ class GantryCraneConnector(Node):
         else:
             self.get_logger().info("Invalid container position")
             return False
-        
+
         if slide_to_position == "origin":
             self.move_trolley_to_origin()
         elif slide_to_position == "middle":
@@ -525,7 +551,7 @@ class GantryCraneConnector(Node):
                 hoist_pwm_flag = 0
 
             self.publish_command(
-                GantryControlModes.CONTROL_MODE, trolley_pwm_flag, hoist_pwm_flag
+                GantryControlModes.BRAKE_MODE, trolley_pwm_flag, hoist_pwm_flag
             )
 
     def idle(self):
@@ -560,9 +586,7 @@ class GantryCraneConnector(Node):
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
 
         for i in range(10):
-            self.publish_command(
-                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
-            )
+            self.publish_command(GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM)
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -602,9 +626,7 @@ class GantryCraneConnector(Node):
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
 
         for i in range(10):
-            self.publish_command(
-                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
-            )
+            self.publish_command(GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM)
 
         self.brake(brake_trolley=False, brake_hoist=True)
 
@@ -636,9 +658,7 @@ class GantryCraneConnector(Node):
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
 
         for i in range(10):
-            self.publish_command(
-                GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM
-            )
+            self.publish_command(GantryControlModes.CONTROL_MODE, 0, HOLD_HOIST_PWM)
 
         self.brake(brake_trolley=False, brake_hoist=True)
 

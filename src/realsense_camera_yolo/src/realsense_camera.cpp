@@ -18,9 +18,9 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      projector(NORMAL_PLANE_A, NORMAL_PLANE_B, NORMAL_PLANE_C, NORMAL_PLANE_D,
                                                NORMAL_LINE_A, NORMAL_LINE_B, NORMAL_LINE_C,
                                                TROLLEY_ORIGIN_X, TROLLEY_ORIGIN_Y, TROLLEY_ORIGIN_Z),
-                                    //  containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                    //  containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                    //  containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
+                                     cableLengthMovingAverage(CABLE_LENGTH_MOVING_AVERAGE_WINDOW_SIZE),
+                                     swayAngleMovingAverage(SWAY_ANGLE_MOVING_AVERAGE_WINDOW_SIZE),
+                                     DC_OffsetSwayAngleMovingAverage(DC_OFFSET_SWAY_ANGLE_MOVING_AVERAGE_WINDOW_SIZE),
                                      executionTime(30)
 {
 
@@ -335,19 +335,30 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     projector.projectPoint(x, y, z);
     // Get the distance from trolley origin to the projected point
     double cable_length = projector.getDistance(x, y, z);
+    cableLengthMovingAverage.addValue(cable_length);
+
     // Get the sway angle from the normal line
     double sway_angle = projector.getAngle(x, y, z);
     // Convert to degree
     sway_angle = sway_angle * 180 / M_PI + SWAY_ANGLE_OFFSET;
 
+    swayAngleMovingAverage.addValue(sway_angle);
+
+    double sway_angle_ = swayAngleMovingAverage.getMovingAverage();
+
+    DC_OffsetSwayAngleMovingAverage.addValue(sway_angle_);
+
+    sway_angle_ = sway_angle_ - DC_OffsetSwayAngleMovingAverage.getMovingAverage();
+
     // Publish cable length
     auto cable_length_message = std_msgs::msg::Float32();
-    cable_length_message.data = cable_length;
+    // cable_length_message.data = cable_length;
+    cable_length_message.data = cableLengthMovingAverage.getMovingAverage();
     cableLengthPublisher->publish(cable_length_message);
 
     // Publish sway angle
     auto sway_angle_message = std_msgs::msg::Float32();
-    sway_angle_message.data = sway_angle;
+    sway_angle_message.data = sway_angle_;
     swayAnglePublisher->publish(sway_angle_message);
 
     int execution_time = executionTime.getMovingAverage();

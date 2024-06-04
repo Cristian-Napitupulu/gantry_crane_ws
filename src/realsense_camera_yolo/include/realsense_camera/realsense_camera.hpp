@@ -63,10 +63,11 @@ private:
     const int depthWidth, depthHeight; 
 
     pointProjections projector;
-    // MovingAverage containerXPosition;
-    // MovingAverage containerYPosition;
-    // MovingAverage containerZPosition;
+    MovingAverage cableLengthMovingAverage;
+    MovingAverage swayAngleMovingAverage;
+    MovingAverage DC_OffsetSwayAngleMovingAverage;
     MovingAverage executionTime;
+    
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

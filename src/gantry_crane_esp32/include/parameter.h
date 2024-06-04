@@ -12,6 +12,9 @@
 #define TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME "trolley_motor_voltage"
 #define HOIST_MOTOR_VOLTAGE_TOPIC_NAME "hoist_motor_voltage"
 
+#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+
 // micro-ROS executor timeout
 // trolley position publisher
 #define POSITION_PUBLISH_PERIOD_MS 3
@@ -45,7 +48,7 @@
 * Used for protection 
 */
 
-#define TROLLEY_MAX_SPEED 0.4   // m/s
+#define TROLLEY_MAX_SPEED 0.3   // m/s
 
 // Operating PWM values for trolley motor`
 #define TROLLEY_MOTOR_PWM_MAX 800
@@ -117,7 +120,8 @@
 #define LOCK_CONTAINER_MODE 0x4F
 #define UNLOCK_CONTAINER_MODE 0x5F
 #define CONTROL_MODE 0x6F
+#define BRAKE_MODE 0x7F
 
-#define BRAKE_COMMAND 0x7FF
+#define PWM_BRAKE_FLAG 0x7FF
 
 #endif

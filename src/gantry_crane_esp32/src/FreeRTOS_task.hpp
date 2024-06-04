@@ -108,20 +108,27 @@ void controllerCommandTask(void *parameter)
     {
         ledBuiltIn.blink(300);
 
+        // Brake gantry
         if (brakeTrolleyMotor)
         {
             trolleyMotorPWM = 0;
             trolleyMotor.setPWM(trolleyMotorPWM);
             trolleyMotor.brake();
-            brakeTrolleyMotor = false;
+            if (millis() - trolleyBrakeCommandTimer > 200)
+            {
+                brakeTrolleyMotor = false;
+            }
         }
 
         if (brakeHoistMotor)
         {
-            hoistMotorPWM = HOLD_HOIST_MOTOR_PWM;
+            hoistMotorPWM = 0;
             hoistMotor.setPWM(hoistMotorPWM);
-            // hoistMotor.brake();
-            brakeHoistMotor = false;
+            hoistMotor.brake();
+            if (millis() - hoistBrakeCommandTimer > 200)
+            {
+                brakeHoistMotor = false;
+            }
         }
 
         if (gantryMode == IDLE_MODE)

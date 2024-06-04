@@ -95,18 +95,20 @@ class GantryCraneModel:
         self.update_matrix_B()
         self.update_matrix_G() 
 
-def fuzzytype2(u,e,tet,u0=575):
+def fuzzytype2(u,e,tet,u0=575,mode="trolley"):
     domain1 = linspace(0., 5., 100)
     Z1 = IT2FS_Gaussian_UncertStd(domain1, [0, 0.4, 0.2, 1.])
     S1 = IT2FS_Gaussian_UncertStd(domain1, [1.5, 0.3, 0.2, 1.])
     B1 = IT2FS_Gaussian_UncertStd(domain1, [5, 1.5, 0.3, 1.])
     
     domain2=linspace(0,1,100)
+    #Z2 = IT2FS_Gaussian_UncertStd(domain2, [0, 0.003, 0.001, 1.])
     Z2 = IT2FS_Gaussian_UncertStd(domain2, [0, 0.003, 0.001, 1.])
     S2 = IT2FS_Gaussian_UncertStd(domain2, [0.4, 0.2, 0.1, 1.])
     B2 = IT2FS_Gaussian_UncertStd(domain2, [1, 0.2, 0.1, 1.])
 
     domain3 = linspace(0., 1.0, 100)
+    #Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.004, 0.001, 1.])
     Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.004, 0.001, 1.])
     B3 = IT2FS_Gaussian_UncertStd(domain3, [1, 0.5, 0.1, 1.])
 
@@ -115,18 +117,25 @@ def fuzzytype2(u,e,tet,u0=575):
     myIT2FLS.add_input_variable("e")
     myIT2FLS.add_input_variable("tet")
     myIT2FLS.add_output_variable("un")
-
-    myIT2FLS.add_rule([("u", B1)], [("un", {"const":u0, "u":25., "e":0.,"tet":0})])
-    myIT2FLS.add_rule([("u", S1)], [("un", {"const":u0, "u":25., "e":0.,"tet":0})])
-    myIT2FLS.add_rule([("u", Z1), ("e", S2)], [("un", {"const":u0, "u":25., "e":0.,"tet":0})])
-    myIT2FLS.add_rule([("u", Z1), ("e", B2)], [("un", {"const":u0, "u":25., "e":0.,"tet":0})])
-    myIT2FLS.add_rule([("u", Z1), ("tet", B3)], [("un", {"const":u0, "u":25., "e":0.,"tet":0})])
+    if mode=="trolley":
+        umax=700
+    else:
+        umax=600
+    
+    cu=(umax-u0)/5
+    
+    myIT2FLS.add_rule([("u", B1)], [("un", {"const":u0, "u":cu, "e":0.,"tet":0})])
+    myIT2FLS.add_rule([("u", S1)], [("un", {"const":u0, "u":cu, "e":0.,"tet":0})])
+    myIT2FLS.add_rule([("u", Z1), ("e", S2)], [("un", {"const":u0, "u":cu, "e":0.,"tet":0})])
+    myIT2FLS.add_rule([("u", Z1), ("e", B2)], [("un", {"const":u0, "u":cu, "e":0.,"tet":0})])
+    myIT2FLS.add_rule([("u", Z1), ("tet", B3)], [("un", {"const":u0, "u":cu, "e":0.,"tet":0})])
     myIT2FLS.add_rule([("u", Z1), ("e", Z2), ("tet", Z3)], [("un", {"const":0, "u":0., "e":0.,"tet":0})])
 
     e = max(0, min(1, abs(e)))
     tet = max(0, min(1, abs(tet)))
     u = max(0, min(5, abs(u)))
     res=myIT2FLS.evaluate({"u":u, "e":e, "tet":tet})
+    print(f"u0={u0}, cu={cu}, un={res['un']}")
     return res['un']
 
 class Controller:
@@ -156,10 +165,10 @@ class Controller:
         if parameter_json_path is not None:
             with open(parameter_json_path, "r") as file:
                 parameters = json.load(file)
-        self.Kpx = 7.36#7.36  # 9.89
-        self.Kdx = 5.01#5.01  # 2.87
-        self.Kpl = 14.18  # 10
-        self.Kdl = 8.98  # 3.13
+        self.Kpx = 9.89#7.36  # 9.89
+        self.Kdx = 2.87#5.01  # 2.87
+        self.Kpl = 10#14.18  # 10
+        self.Kdl = 3.13#8.98  # 3.13
 
     def get_control_signal(self, desired_trolley_position, desired_cable_length=None):
         desired_cable_length_ = desired_cable_length
@@ -225,16 +234,19 @@ class Controller:
     def convert_to_pwm(self, trolley_control_input, hoist_control_input=None):
         tetha=self.connector.variables_value["sway_angle"]
 
-        ufuzzx=fuzzytype2(trolley_control_input,self.ex,tetha,680)      
+        ufuzzx=fuzzytype2(trolley_control_input,self.ex,tetha,620,"trolley") #630     
         pwm_trolley= np.sign(trolley_control_input)*ufuzzx
 
         if np.sign(hoist_control_input)==-1:
-            ufuzzl=fuzzytype2(hoist_control_input,self.el,tetha,830) 
+            ufuzzl=fuzzytype2(hoist_control_input,self.el,tetha,400,"hoist") 
         else:
-            ufuzzl=fuzzytype2(hoist_control_input,self.el,tetha,475)   
+            ufuzzl=fuzzytype2(hoist_control_input,self.el,tetha,200,"hoist")   
         pwm_hoist= np.sign(hoist_control_input)*ufuzzl
-        if abs(pwm_hoist)<400:
-            pwm_hoist=-400
+        if abs(pwm_hoist)<220:
+            pwm_hoist=-200
+
+        # if abs(self.el)<0.02:
+        #     pwm_hoist=-200
         
         
         self.pwm_trolley_motor = pwm_trolley
@@ -457,7 +469,7 @@ def send_command_and_collect_data(
     collect_data()
 
 def control_gantry_crane(
-    timeout_sec=50.0,
+    timeout_sec=30.0,
     desired_trolley_position=1.0,
     desired_cable_length=None,
     max_trolley_position_steady_state_error=0.1,
@@ -550,7 +562,7 @@ def control_gantry_crane(
     return result
 
 
-DURATION = 50
+DURATION = 40
 DESIRED_TROLLEY_POSITION = 1.0
 DESIRED_CABLE_LENGTH = 0.4
 
@@ -585,7 +597,7 @@ if __name__ == "__main__":
         '''
         result = control_gantry_crane(
             timeout_sec=DURATION,
-            desired_trolley_position=0.5,
+            desired_trolley_position=0.50,
             desired_cable_length=0.6,
             #desired_cable_length=None,
             max_trolley_position_steady_state_error=0.01,
@@ -601,7 +613,7 @@ if __name__ == "__main__":
         result = control_gantry_crane(
             timeout_sec=DURATION,
             desired_trolley_position=1.0,
-            desired_cable_length=0.4,
+            desired_cable_length=0.47,
             #desired_cable_length=None,
             max_trolley_position_steady_state_error=0.01,
             max_cable_length_steady_state_error=0.01,
@@ -698,4 +710,4 @@ if __name__ == "__main__":
     Gantry_Crane_Connector.move_trolley_to_origin()
     Gantry_Crane_Connector.hoist_container_to_middle()
 
-    Gantry_Crane_Connector.stop()
+    Gantry_Crane_Connector.end()

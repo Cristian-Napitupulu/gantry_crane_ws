@@ -3,23 +3,23 @@
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
             "matrix_alpha": {
-                "value": [[3.8, 0.0], [0.0, 4.7]],
+                "value": [[5.0, 0.0], [0.0, 0.7]],
                 "description": "Matrix Alpha: [[alpha1, 0], [0, alpha2]]"
             },
             "matrix_beta": {
-                "value": [[4.0, 0.0], [0.0, 0.5]],
+                "value": [[5.0, 0.0], [0.0, 2.5]],
                 "description": "Matrix Beta: [[beta1, 0], [0, beta2]]"
             },
             "matrix_lambda": {
-                "value": [[1.2], [1.0]],
+                "value": [[3.0], [1.0]],
                 "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
             "matrix_k": {
-                "value": [[8.20], [11.0]],
+                "value": [[7.5], [12.0]],
                 "description": "Matrix K: [[k1], [k2]]"
             },
             "matrix_gamma": {
-                "value": [[4.0], [2.50]],
+                "value": [[4.0], [3.50]],
                 "description": "Matrix Gamma: [[gamma1], [gamma2]]"
             },
             "trolley_control_input_range": {

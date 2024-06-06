@@ -140,8 +140,8 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
     float hoistMotorVoltage_ = hoistMotorVoltage * 3.13675602;
     hoistMotorVoltageMovingAverage.addValue(hoistMotorVoltage_);
 
-    // hoistMotorVoltageMessage.data = roundToThreeDecimalPlaces(hoistMotorVoltageMovingAverage.getMovingAverage());
-    hoistMotorVoltageMessage.data = trolleyMotor.currentPWM;
+    hoistMotorVoltageMessage.data = roundToThreeDecimalPlaces(hoistMotorVoltageMovingAverage.getMovingAverage());
+    // hoistMotorVoltageMessage.data = trolleyMotor.currentPWM;
     // hoistMotorVoltageMessage.data = hoistMotor.currentPWM;
     // hoistMotorVoltageMessage.data = brakeHoistMotor;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));

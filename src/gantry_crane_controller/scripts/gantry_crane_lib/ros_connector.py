@@ -46,7 +46,7 @@ class GantryControlModes:
         0x5F  # Unlock container mode, move servo to unlock container
     )
     CONTROL_MODE = 0x6F  # Control mode, control trolley and hoist motors
-    BRAKE_MODE = 0x7F # Brake mode, stop either trolley or hoist motor
+    BRAKE_MODE = 0x7F  # Brake mode, stop either trolley or hoist motor
     PWM_BRAKE_FLAG = 0x7FF  # Brake command, flag to stop either trolley or hoist motor
 
 
@@ -151,14 +151,10 @@ class GantryCraneConnector(Node):
             )  # Convert to radians and round to 3 decimal places, resolution of the LIDAR
 
         if variable_name == "trolley_motor_voltage":
-            value = round(
-                value, 5
-            )  # Round to 5 decimal places: resolution of the DAC
+            value = round(value, 5)  # Round to 5 decimal places: resolution of the DAC
 
         if variable_name == "hoist_motor_voltage":
-            value = round(
-                value, 5
-            )  # Round to 5 decimal places: resolution of the DAC
+            value = round(value, 5)  # Round to 5 decimal places: resolution of the DAC
 
         self.variables_value[variable_name] = value  # Update value
 
@@ -391,18 +387,17 @@ class GantryCraneConnector(Node):
             | ((pwm_hoist_motor & 0xFFF) << 20)
         )
         return packed_value
-    
+
     def initialized(self):
         self.get_logger().info("Initializing gantry crane connector...")
         self.wait_for_messages()
         self.wait_for_subscribers()
         self.reset_variable()
         self.get_logger().info("Gantry crane connector initialized")
-        
+
         return True
 
-
-    def begin(self, slide_to_position="origin", hoist_to_position="middle"):
+    def begin(self, slide_to_position="origin", hoist_to_position="top"):
         self.get_logger().info("Beginning gantry crane connector...")
         self.wait_for_messages()
         self.wait_for_subscribers()

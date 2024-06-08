@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from gantry_crane_lib.ros_connector import GantryCraneConnector, GantryControlModes
+from gantry_crane_lib.ros_connector import MIN_TROLLEY_POSITION, MAX_TROLLEY_POSITION, MIN_CABLE_LENGTH, MAX_CABLE_LENGTH
 from gantry_crane_lib.logger import Logger
 
 from sliding_mode_controller import non_linear_motor_model, sliding_mode_controller
@@ -343,13 +344,14 @@ def step_response_trolley_motor_pwm(pwm=0, timeout_sec=15.0):
 
     if rising:
         gantry_crane_connector.move_trolley_to_origin()
-        # print("Current PWM: {}".format(pwm))
         start_time = time.time()
         while time.time() - start_time <= timeout_sec:
-            pwm_random_offset = int(random.uniform(-100, 100))
+            pwm_random_offset = int(random.uniform(-75, 75))
             pwm_input = pwm + pwm_random_offset
-            if gantry_crane_connector.variables_value["trolley_position"] <= 0.75:
-                send_command_and_collect_data(GantryControlModes.CONTROL_MODE, pwm_input, 0)
+            if gantry_crane_connector.variables_value["trolley_position"] <= 1.25:
+                send_command_and_collect_data(
+                    GantryControlModes.CONTROL_MODE, pwm_input, 0
+                )
             else:
                 send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
 
@@ -365,10 +367,12 @@ def step_response_trolley_motor_pwm(pwm=0, timeout_sec=15.0):
         # print("Current PWM: {}".format(pwm))
         start_time = time.time()
         while time.time() - start_time <= timeout_sec:
-            pwm_random_offset = int(random.uniform(-100, 100))
+            pwm_random_offset = int(random.uniform(-75, 75))
             pwm_input = pwm + pwm_random_offset
-            if gantry_crane_connector.variables_value["trolley_position"] >= 0.75:
-                send_command_and_collect_data(GantryControlModes.CONTROL_MODE, pwm_input, 0)
+            if gantry_crane_connector.variables_value["trolley_position"] >= 1.5 - 1.25:
+                send_command_and_collect_data(
+                    GantryControlModes.CONTROL_MODE, pwm_input, 0
+                )
             else:
                 send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
 
@@ -377,6 +381,56 @@ def step_response_trolley_motor_pwm(pwm=0, timeout_sec=15.0):
             send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
         time.sleep(1.0)
         gantry_crane_connector.move_trolley_to_end()
+        time.sleep(1.0)
+
+
+def step_response_hoist_motor_pwm(
+    pwm=0, timeout_sec=15.0, enable_random=False, random_range=75
+):
+    if pwm < 0:
+        rising = False
+    else:
+        rising = True
+
+    if rising:
+        timer_begin = time.time()
+        while time.time() - timer_begin <= 1.0:
+            send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
+
+        timer_operate = time.time()
+        while time.time() - timer_operate < timeout_sec:
+            pwm_input = pwm
+            if enable_random:
+                pwm_random_offset = int(random.uniform(-75, 75))
+                pwm_input = pwm + pwm_random_offset
+
+            if gantry_crane_connector.variables_value["cable_length"] <= 0.60:
+                send_command_and_collect_data(
+                    GantryControlModes.CONTROL_MODE, 0, pwm_input
+                )
+            else:
+                send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
+
+        timer_reset = time.time()
+        while time.time() - timer_reset <= 1.0:
+            send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
+        time.sleep(1.0)
+
+    else:
+        start_time = time.time()
+        while time.time() - start_time < timeout_sec:
+            pwm_random_offset = int(random.uniform(-75, 75))
+            pwm_input = pwm + pwm_random_offset
+            if gantry_crane_connector.variables_value["cable_length"] <= 0.40:
+                send_command_and_collect_data(
+                    GantryControlModes.CONTROL_MODE, 0, pwm_input
+                )
+            else:
+                send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
+
+        timer_reset = time.time()
+        while time.time() - timer_reset <= 1.0:
+            send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
         time.sleep(1.0)
 
 
@@ -490,12 +544,43 @@ if __name__ == "__main__":
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
     # Initialize gantry crane
-    gantry_crane_connector.begin(slide_to_position="origin", hoist_to_position="top")
+    gantry_crane_connector.begin(slide_to_position="middle", hoist_to_position="top")
     time.sleep(5.0)
 
     try:
         # Begin logger timer
+        gantry_crane_logger.reset_buffers()
         gantry_crane_logger.reset_timer()
+        for i in range(3):
+            gantry_crane_connector.idle()
+            time.sleep(10.0)
+            # Sweep trolley motor PWM
+            gantry_crane_logger.reset_timer()
+            step_response_hoist_motor_pwm(
+                pwm=325, timeout_sec=20, enable_random=True, random_range=75
+            )
+            gantry_crane_logger.write_buffers_to_excel(
+                "hoist_extend_step_response_325_with_random.xlsx"
+            )
+            create_plot()
+            gantry_crane_logger.reset_buffers()
+            gantry_crane_connector.move_trolley_to_middle()
+            gantry_crane_connector.hoist_container_to_top()
+
+        # # Begin logger timer
+        # gantry_crane_logger.reset_buffers()
+        # gantry_crane_logger.reset_timer()
+        # for i in range(3):
+        #     gantry_crane_connector.move_trolley_to_origin()
+        #     gantry_crane_connector.idle()
+        #     time.sleep(10.0)
+        #     # Sweep trolley motor PWM
+        #     gantry_crane_logger.reset_timer()
+        #     step_response_trolley_motor_pwm(pwm=750, timeout_sec=20)
+        #     gantry_crane_logger.write_buffers_to_excel("step_response_750_with_random.xlsx"
+        #     )
+        #     create_plot()
+        #     gantry_crane_logger.reset_buffers()
 
         for i in range(3):
             gantry_crane_connector.move_trolley_to_origin()
@@ -503,27 +588,12 @@ if __name__ == "__main__":
             time.sleep(5.0)
             # Sweep trolley motor PWM
             gantry_crane_logger.reset_timer()
-            step_response_trolley_motor_pwm(pwm=700, timeout_sec=20)
+            sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=20, timeout_sec=4.0)
             gantry_crane_logger.write_buffers_to_excel(
-                gantry_crane_controller.get_name()
-                + "_rising_sweep_trolley_data_1_increment.xlsx"
+                "trolley_motor_sweep_response.xlsx"
             )
             create_plot()
             gantry_crane_logger.reset_buffers()
-
-        # for i in range(3):
-        #     gantry_crane_connector.move_trolley_to_origin()
-        #     gantry_crane_connector.idle()
-        #     time.sleep(5.0)
-        #     # Sweep trolley motor PWM
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_trolley_motor_pwm(pwm_range=[0, 700], increment=20, timeout_sec=4.0)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         gantry_crane_controller.get_name()
-        #         + "_rising_sweep_trolley_data_1_increment.xlsx"
-        #     )
-        #     create_plot()
-        #     gantry_crane_logger.reset_buffers()
 
         # gantry_crane_connector.move_trolley_to_middle()
         # for i in range(2):
@@ -656,9 +726,9 @@ if __name__ == "__main__":
         # )
         # print("Target third position. Result: {}".format(result))
 
-        gantry_crane_logger.write_buffers_to_excel(
-            gantry_crane_controller.get_name() + "_sweep_trolley_data.xlsx"
-        )
+        # gantry_crane_logger.write_buffers_to_excel(
+        #     gantry_crane_controller.get_name() + "_sweep_trolley_data.xlsx"
+        # )
 
     except KeyboardInterrupt:
         pass

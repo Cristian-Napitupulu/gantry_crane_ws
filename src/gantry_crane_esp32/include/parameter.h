@@ -8,29 +8,35 @@
 #define NODE_NAME "microcontroller_gantry"
 #define TROLLEY_POSITION_TOPIC_NAME "trolley_position"
 #define LIMIT_SWITCH_TOPIC_NAME "limit_switch"
-#define MOTOR_PWM_TOPIC_NAME "motor_pwm"
+#define CONTROLLER_COMMAND_TOPIC_NAME "controller_command"
 #define TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME "trolley_motor_voltage"
 #define HOIST_MOTOR_VOLTAGE_TOPIC_NAME "hoist_motor_voltage"
 
+#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+
 // micro-ROS executor timeout
 // trolley position publisher
-#define POSITION_PUBLISH_PERIOD_MS 5
+#define POSITION_PUBLISH_PERIOD_MS 3
 #define POSITION_PUBLISH_TIMEOUT_MS 10
 
 // limit switch publisher
-#define LIMIT_SWITCH_PUBLISH_PERIOD_MS 5
+#define LIMIT_SWITCH_PUBLISH_PERIOD_MS 3
 #define LIMIT_SWITCH_PUBLISH_TIMEOUT_MS 10
 
 // trolley motor voltage publisher
-#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 5
+#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 3
 #define TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
 
 // hoist motor voltage publisher
-#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 5
+#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 3
 #define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
 
-// motor PWM subscriber
-#define MOTOR_PWM_SUBSCRIBER_TIMEOUT_MS 5
+// Controller Command subscriber
+#define CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS 10
+
+// Timeout for controller command
+#define CONTROLLER_COMMAND_TIMEOUT_MS 500
 
 /*Minimum and maximum PWM values
 * Minimum PWM value is the value when the motor is barely moving (dead zone)
@@ -42,15 +48,19 @@
 * Used for protection 
 */
 
+#define TROLLEY_MAX_SPEED 0.3   // m/s
+
 // Operating PWM values for trolley motor`
-#define TROLLEY_MOTOR_PWM_MAX 1023
+#define TROLLEY_MOTOR_PWM_MAX 800
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Operating PWM values for hoist motor
 #define HOIST_MOTOR_PWM_MAX 1023
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 635
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 650
+#define HOLD_HOIST_MOTOR_PWM -200
+
 // Encoder
 // Got from measurement
 #define ENCODER_MAX_VALUE 27000
@@ -58,8 +68,8 @@
 #define POSITION_MAX_VALUE 1.5
 #define POSITION_MIN_VALUE 0
 
-#define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
-#define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 10
+// #define TROLLEY_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 5
+// #define HOIST_MOTOR_VOLTAGE_MOVING_AVERAGE_BUFFER_SIZE 5
 
 /*Pin definitions
 * When choosing a pin, make sure it is not conflicting with other pins.
@@ -67,8 +77,10 @@
 * Pin 0 and 1 are used for serial communication, so don't use them.
 * Pin 2 is used for notification LED, so don't use it.
 * Pin 6 to 11 are used for SPI communication, so don't use them.
+* Pin 21 to 23 are used for I2C communication, so don't use them.
 * Pin 34 to 39 are input only, be careful when using them.
 */
+
 // Encoder pins
 #define ENCODER_CHANNEL_A_PIN 33
 #define ENCODER_CHANNEL_B_PIN 32
@@ -80,12 +92,13 @@
 
 // Hoist motor pins
 #define HOIST_MOTOR_FORWARD_PIN 13
-#define HOIST_MOTOR_REVERSE_PIN 12
+#define HOIST_MOTOR_REVERSE_PIN 19
 #define HOIST_MOTOR_PWM_PIN 14
 
 // Limit switches pins
-#define LIMIT_SWITCH_ENCODER_SIDE_PIN 15
-#define LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_PIN 4
+#define LIMIT_SWITCH_ENCODER_SIDE_PIN 34
+#define LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_PIN 35
+
 
 // I2C addressess
 // PCA9685: Servo driver for locking mechanism
@@ -100,26 +113,15 @@
 #define LIMIT_SWITCH_BOTH_TRIGGERED 0x6F
 
 // Mode
-#define IDLE_MODE 0x00
+#define IDLE_MODE 0x0F
 #define MOVE_TO_ORIGIN_MODE 0x1F
 #define MOVE_TO_MIDDLE_MODE 0x2F
 #define MOVE_TO_END_MODE 0x3F
 #define LOCK_CONTAINER_MODE 0x4F
 #define UNLOCK_CONTAINER_MODE 0x5F
 #define CONTROL_MODE 0x6F
-#define COLLECT_DATA_MODE 0xFF
+#define BRAKE_MODE 0x7F
 
-#define BRAKE_COMMAND 0x7FF
-
-// Calculation constants
-#define FULL_BRIDGE_RECTIFIER_DIODE_VOLTAGE_DROP 0.7
-#define VOLTAGE_DIVIDER_RESISTOR_RATIO 0.1686824765832
-
-
-// PID constants
-#define TROLLEY_MOTOR_KP 0.044
-#define TROLLEY_MOTOR_KI 0.1
-#define TROLLEY_MOTOR_KD 0.001
-#define TROLLEY_MOTOR_MAX_INTEGRAL 1000
+#define PWM_BRAKE_FLAG 0x7FF
 
 #endif

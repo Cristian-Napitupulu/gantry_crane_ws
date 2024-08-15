@@ -9,7 +9,7 @@
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 
-#include "realsense_camera_yolo_interfaces/srv/realsense_yolo.hpp"
+#include "gantry_crane_interfaces/srv/realsense_yolo.hpp"
 
 #include "point_projections/point_projections.hpp"
 #include "moving_average/moving_average.hpp"
@@ -17,7 +17,7 @@
 class RealSenseCamera : public rclcpp::Node
 {
 public:
-    using RealsenseYOLO = realsense_camera_yolo_interfaces::srv::RealsenseYOLO;
+    using RealsenseYOLO = gantry_crane_interfaces::srv::RealsenseYOLO;
 
     RealSenseCamera();
 
@@ -29,10 +29,12 @@ private:
     bool initializeYOLOClient();
 
     void sendRequestToYOLO(rs2::frameset frames);
+    std::vector<rs2::vertex> generatePointCloudInsideBoundingBox(rs2::depth_frame depth_frame);
     void projectContainerPixelToPoint(rs2::depth_frame depth_frame);
     void publishCableLengthAndSwayAngle();
     void publishImage(rs2::frameset frames);
     rs2::depth_frame processDepthFrame(rs2::depth_frame depth_frame);
+    cv::Mat pointCloudToMat(std::vector<rs2::vertex> pointCloud);
 
     // Declare action client
     rclcpp::Client<RealsenseYOLO>::SharedPtr YOLO_client;
@@ -61,9 +63,11 @@ private:
     const int depthWidth, depthHeight; 
 
     pointProjections projector;
-    MovingAverage containerXPosition;
-    MovingAverage containerYPosition;
-    MovingAverage containerZPosition;
+    MovingAverage cableLengthMovingAverage;
+    MovingAverage swayAngleMovingAverage;
+    MovingAverage DC_OffsetSwayAngleMovingAverage;
+    MovingAverage executionTime;
+    
 };
 
 #endif // REAL_SENSE_CAMERA_HPP

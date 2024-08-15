@@ -1,6 +1,10 @@
 #include "realsense_camera/realsense_camera.hpp"
 #include "realsense_parameter.hpp"
 
+#define NO_RESULT 0
+#define YOLO_RESULT 1
+#define CORNER_RESULT 2
+
 RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      YOLO_client(nullptr),
                                      depthImagePublisher(nullptr),
@@ -14,21 +18,25 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
                                      projector(NORMAL_PLANE_A, NORMAL_PLANE_B, NORMAL_PLANE_C, NORMAL_PLANE_D,
                                                NORMAL_LINE_A, NORMAL_LINE_B, NORMAL_LINE_C,
                                                TROLLEY_ORIGIN_X, TROLLEY_ORIGIN_Y, TROLLEY_ORIGIN_Z),
-                                     containerXPosition(CONTAINER_X_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                     containerYPosition(CONTAINER_Y_POSITION_MOVING_AVERAGE_WINDOW_SIZE),
-                                     containerZPosition(CONTAINER_Z_POSITION_MOVING_AVERAGE_WINDOW_SIZE)
+                                     cableLengthMovingAverage(CABLE_LENGTH_MOVING_AVERAGE_WINDOW_SIZE),
+                                     swayAngleMovingAverage(SWAY_ANGLE_MOVING_AVERAGE_WINDOW_SIZE),
+                                     DC_OffsetSwayAngleMovingAverage(DC_OFFSET_SWAY_ANGLE_MOVING_AVERAGE_WINDOW_SIZE),
+                                     executionTime(30)
 {
+
+    initializeRealSenseCamera();
+
     initializeParameters();
     printParameters();
     initializePublishers();
-    initializeRealSenseCamera();
 
     bool isYOLOServerIsUp = initializeYOLOClient();
 
-    rclcpp::Time time_last = rclcpp::Clock().now();
-    float loop_rate_last = 0;
     while (rclcpp::ok())
     {
+        // Print loop rate in miliseconds
+        rclcpp::Time start_time = rclcpp::Clock().now();
+
         // Print something for debugging
         RCLCPP_DEBUG(this->get_logger(), "Waiting for new frames...");
 
@@ -56,16 +64,9 @@ RealSenseCamera::RealSenseCamera() : Node(NODE_NAME),
             rclcpp::shutdown();
         }
 
-        // Check log level
-        if (rcutils_logging_get_logger_effective_level(this->get_logger().get_name()) == RCUTILS_LOG_SEVERITY_DEBUG)
-        {
-            // Print loop rate in miliseconds
-            rclcpp::Time time_now = rclcpp::Clock().now();
-            float loop_rate_now = static_cast<float>(1000000000 / (time_now - time_last).nanoseconds());
-            RCLCPP_INFO(this->get_logger(), "Loop rate: \t %.2f \t per second", (loop_rate_now + loop_rate_last) / 2);
-            time_last = time_now;
-            loop_rate_last = loop_rate_now;
-        }
+        rclcpp::Time end_time = rclcpp::Clock().now();
+        int execution_time_ = static_cast<int>((end_time - start_time).seconds() * 1000);
+        executionTime.addValue(execution_time_);
     }
 }
 
@@ -136,7 +137,10 @@ void RealSenseCamera::initializeRealSenseCamera()
 {
     rs2::config configuration;
     configuration.enable_stream(RS2_STREAM_DEPTH, depthWidth, depthHeight, RS2_FORMAT_Z16, 30);
-    configuration.enable_stream(RS2_STREAM_COLOR, colorWidth, colorHeight, RS2_FORMAT_BGR8, 30);
+    if (publishColor)
+    {
+        configuration.enable_stream(RS2_STREAM_COLOR, colorWidth, colorHeight, RS2_FORMAT_BGR8, 30);
+    }
     pipeline.start(configuration);
 
     rs2::depth_sensor depthSensor = pipeline.get_active_profile().get_device().first<rs2::depth_sensor>();
@@ -169,22 +173,35 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
     request->depth_image = *depth_image_message.get();
     auto result = YOLO_client->async_send_request(request);
 
+    // Print something for debugging
+    RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
+
     if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
     {
         // Get response
         auto response = result.get();
 
-        if (response->x1 == -1 && response->y1 == -1 && response->x2 == -1 && response->y2 == -1)
+        if (response->id == NO_RESULT)
         {
             RCLCPP_WARN(this->get_logger(), "No container detected.");
             return;
         }
-
-        // Get bounding box pixel
-        containerBoundingBoxPixel[0] = response->x1;
-        containerBoundingBoxPixel[1] = response->y1;
-        containerBoundingBoxPixel[2] = response->x2;
-        containerBoundingBoxPixel[3] = response->y2;
+        else if (response->id == YOLO_RESULT)
+        {
+            // Get bounding box pixel
+            containerBoundingBoxPixel[0] = response->x1;
+            containerBoundingBoxPixel[1] = response->y1;
+            containerBoundingBoxPixel[2] = response->x2;
+            containerBoundingBoxPixel[3] = response->y2;
+        }
+        else if (response->id == CORNER_RESULT)
+        {
+            // Get bounding box pixel
+            containerBoundingBoxPixel[0] = response->x1;
+            containerBoundingBoxPixel[1] = response->y1;
+            containerBoundingBoxPixel[2] = response->x2;
+            containerBoundingBoxPixel[3] = response->y2;
+        }
 
         // Project bounding box pixel to point
         projectContainerPixelToPoint(depth_frame);
@@ -192,13 +209,83 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
         // Publish cable length and sway angle
         publishCableLengthAndSwayAngle();
     }
+
     else
     {
         RCLCPP_WARN(this->get_logger(), "Failed to call YOLO service.");
     }
+}
 
-    // Print something for debugging
-    RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
+std::vector<rs2::vertex> RealSenseCamera::generatePointCloudInsideBoundingBox(rs2::depth_frame depth_frame)
+{
+    // Get depth value
+    rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
+    rs2_intrinsics depth_intrinsics = depth_profile.get_intrinsics();
+
+    // Get bounding box pixel
+    int x1 = containerBoundingBoxPixel[0];
+    int y1 = containerBoundingBoxPixel[1];
+    int x2 = containerBoundingBoxPixel[2];
+    int y2 = containerBoundingBoxPixel[3];
+
+    std::vector<rs2::vertex> pointCloud;
+
+    // Get depth frame dimensions
+    int width = depth_frame.get_width();
+    int height = depth_frame.get_height();
+
+    // Iterate over pixels inside the bounding box
+    for (int y = y1; y < y2; ++y)
+    {
+        for (int x = x1; x < x2; ++x)
+        {
+            // Ensure the pixel coordinates are within the frame dimensions
+            if (x >= 0 && x < width && y >= 0 && y < height)
+            {
+                // Get the depth value at the current pixel
+                float depthValue = depth_frame.get_distance(x, y);
+
+                // Check if the depth value is valid
+                if (depthValue > minimumDistance && depthValue < maximumDistance)
+                {
+                    float coordinates[2] = {(float)x, (float)y};
+
+                    float depthPoint[3];
+                    rs2_deproject_pixel_to_point(depthPoint, &depth_intrinsics, coordinates, depthValue);
+                    // Map pixel coordinates to 3D point in camera coordinates
+                    rs2::vertex point = {static_cast<float>(depthPoint[0]),
+                                         static_cast<float>(depthPoint[1]),
+                                         static_cast<float>(depthPoint[2])};
+                    pointCloud.push_back(point);
+                }
+            }
+        }
+    }
+
+    return pointCloud;
+}
+
+cv::Mat RealSenseCamera::pointCloudToMat(std::vector<rs2::vertex> pointCloud)
+{
+    int size = static_cast<int>(pointCloud.size());
+    // Create a matrix with the same number of rows as the point cloud
+    cv::Mat pointCloudMat(size, 3, CV_32FC1);
+
+    // Iterate over the point cloud
+    for (int i = 0; i < size; ++i)
+    {
+        // Get the coordinates of the current point
+        float x = pointCloud[i].x;
+        float y = pointCloud[i].y;
+        float z = pointCloud[i].z;
+
+        // Store the coordinates in the matrix
+        pointCloudMat.at<float>(i, 0) = x;
+        pointCloudMat.at<float>(i, 1) = y;
+        pointCloudMat.at<float>(i, 2) = z;
+    }
+
+    return pointCloudMat;
 }
 
 void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
@@ -206,6 +293,12 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     // Get center pixel
     float center_pixel[2] = {(float)(containerBoundingBoxPixel[0] + containerBoundingBoxPixel[2]) / 2,
                              (float)(containerBoundingBoxPixel[1] + containerBoundingBoxPixel[3]) / 2};
+    if (center_pixel[0] < 0 || center_pixel[0] > depthWidth || center_pixel[1] < 0 || center_pixel[1] > depthHeight)
+    {
+        RCLCPP_INFO(this->get_logger(), "Center pixel is out of range.");
+        return;
+    }
+
     float depth_value = depth_frame.get_distance(center_pixel[0], center_pixel[1]);
     // Get depth value
     rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
@@ -214,13 +307,17 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     float depthPoint[3];
     rs2_deproject_pixel_to_point(depthPoint, &depth_intrinsics, center_pixel, depth_value);
 
-    containerXPosition.addValue(depthPoint[0]);
-    containerYPosition.addValue(depthPoint[1]);
-    containerZPosition.addValue(depthPoint[2]);
+    // containerXPosition.addValue(depthPoint[0]);
+    // containerYPosition.addValue(depthPoint[1]);
+    // containerZPosition.addValue(depthPoint[2]);
 
-    containerCenterPoint[0] = containerXPosition.getMovingAverage();
-    containerCenterPoint[1] = containerYPosition.getMovingAverage();
-    containerCenterPoint[2] = containerZPosition.getMovingAverage();
+    // containerCenterPoint[0] = containerXPosition.getMovingAverage();
+    // containerCenterPoint[1] = containerYPosition.getMovingAverage();
+    // containerCenterPoint[2] = containerZPosition.getMovingAverage();
+
+    containerCenterPoint[0] = depthPoint[0];
+    containerCenterPoint[1] = depthPoint[1];
+    containerCenterPoint[2] = depthPoint[2];
 
     // Print container center point for debugging
     RCLCPP_INFO(get_logger(), "Container center point (x, y, z) (meters): (%.5f, %.5f, %.5f)",
@@ -238,23 +335,35 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
     projector.projectPoint(x, y, z);
     // Get the distance from trolley origin to the projected point
     double cable_length = projector.getDistance(x, y, z);
+    cableLengthMovingAverage.addValue(cable_length);
+
     // Get the sway angle from the normal line
     double sway_angle = projector.getAngle(x, y, z);
     // Convert to degree
     sway_angle = sway_angle * 180 / M_PI + SWAY_ANGLE_OFFSET;
 
+    swayAngleMovingAverage.addValue(sway_angle);
+
+    double sway_angle_ = swayAngleMovingAverage.getMovingAverage();
+
+    DC_OffsetSwayAngleMovingAverage.addValue(sway_angle_);
+
+    sway_angle_ = sway_angle_ - DC_OffsetSwayAngleMovingAverage.getMovingAverage();
+
     // Publish cable length
     auto cable_length_message = std_msgs::msg::Float32();
-    cable_length_message.data = cable_length;
+    // cable_length_message.data = cable_length;
+    cable_length_message.data = cableLengthMovingAverage.getMovingAverage();
     cableLengthPublisher->publish(cable_length_message);
 
     // Publish sway angle
     auto sway_angle_message = std_msgs::msg::Float32();
-    sway_angle_message.data = sway_angle;
+    sway_angle_message.data = sway_angle_;
     swayAnglePublisher->publish(sway_angle_message);
 
+    int execution_time = executionTime.getMovingAverage();
     // Print cable length and sway angle for debugging
-    RCLCPP_INFO(this->get_logger(), "Cable length: %.5f meters, Sway angle: %.5f degrees", cable_length, sway_angle);
+    RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle, execution_time);
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)
@@ -319,7 +428,11 @@ int main(int argc, char **argv)
     }
     catch (const rs2::error &e)
     {
-        std::cerr << e.what() << '\n';
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "RealSense error calling %s: %s", e.get_failed_function().c_str(), e.what());
+    }
+    catch (const std::exception &e)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "%s", e.what());
     }
     rclcpp::shutdown();
     return 0;

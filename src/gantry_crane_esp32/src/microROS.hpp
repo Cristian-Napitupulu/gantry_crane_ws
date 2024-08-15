@@ -16,7 +16,6 @@
 #include "variable.h"
 #include "utility.h"
 #include "ADC.hpp"
-#include "lookUpTable.hpp"
 
 #if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
 #error This script is only available for Arduino framework with serial transport.
@@ -35,80 +34,18 @@
     rcl_ret_t temp_rc = fn;      \
     if ((temp_rc != RCL_RET_OK)) \
     {                            \
+      gantryMode = IDLE_MODE;    \
     }                            \
   }
-
-// Global variables
-// micro-ROS node
-rcl_node_t microcontrollerGantryNode;
-rcl_allocator_t allocator;
-rclc_support_t support;
-
-// limit switches
-rcl_publisher_t limitSwitchPublisher;
-std_msgs__msg__Int8 limitSwitchMessage;
-rclc_executor_t limitSwitchExecutor;
-rcl_timer_t limitSwitchPubTimer;
-
-// encoder publisher, timer, and executor
-rcl_publisher_t positionPublisher;
-std_msgs__msg__Float32 positionMessage;
-rclc_executor_t positionPubExecutor;
-rcl_timer_t positionPubTimer;
-
-// controller command subscribers and executors
-rcl_subscription_t controllerCommandSubscriber;
-std_msgs__msg__UInt32 controllerCommandMessage;
-rclc_executor_t controllerCommandExecutor;
-
-// Trolley Motor Voltage Publisher
-rcl_publisher_t trolleyMotorVoltagePublisher;
-std_msgs__msg__Float32 trolleyMotorVoltageMessage;
-rclc_executor_t trolleyMotorVoltageExecutor;
-rcl_timer_t trolleyMotorVoltagePubTimer;
-
-// Hoist Motor Voltage Publisher
-rcl_publisher_t hoistMotorVoltagePublisher;
-std_msgs__msg__Float32 hoistMotorVoltageMessage;
-rclc_executor_t hoistMotorVoltageExecutor;
-rcl_timer_t hoistMotorVoltagePubTimer;
-
-void microROSInit();
 
 // Error handle loop
 void error_loop()
 {
   ledBuiltIn.turnOn();
-  microROSInit();
+
+  vTaskDelete(spinMicroROSTaskHandle);
+  vTaskDelete(controllerCommandTaskHandle);
 }
-
-void publishLimitSwitchState(rcl_timer_t *timer, int64_t last_call_time)
-{
-  RCLC_UNUSED(last_call_time);
-  if (timer != NULL)
-  {
-    if (limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_BOTH_TRIGGERED;
-    }
-    else if (limitSwitchEncoderSideState && !limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_ENCODER_SIDE_TRIGGERED;
-    }
-    else if (!limitSwitchEncoderSideState && limitSwitchTrolleyMotorSideState)
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_TROLLEY_MOTOR_SIDE_TRIGGERED;
-    }
-    else
-    {
-      limitSwitchMessage.data = LIMIT_SWITCH_NONE_TRIGGERED;
-    }
-
-    RCSOFTCHECK(rcl_publish(&limitSwitchPublisher, &limitSwitchMessage, NULL));
-  }
-}
-
-float trolleyPosition = 0;
 void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
 {
   RCLC_UNUSED(last_call_time);
@@ -120,46 +57,44 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
   }
 }
 
-bool brakeTrolleyMotor = false;
-bool brakeHoistMotor = false;
+u_int32_t controller_command_last_call_time = 0;
+int8_t last_gantry_mode = IDLE_MODE;
 void controllerCommandHandler();
 void controllerCommandCallback(const void *msgin)
 {
   const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   controllerCommandHandler();
+  controller_command_last_call_time = millis();
+  last_gantry_mode = gantryMode;
 }
 
+uint64_t trolleyBrakeCommandTimer = 0;
+uint64_t hoistBrakeCommandTimer = 0;
 void controllerCommandHandler()
 {
-  if (trolleyMotorPWM == BRAKE_COMMAND)
+  if (trolleyMotorPWM == PWM_BRAKE_FLAG && gantryMode == BRAKE_MODE)
   {
     trolleyMotorPWM = 0;
     brakeTrolleyMotor = true;
-  }
-  else
-  {
-    brakeTrolleyMotor = false;
+    trolleyBrakeCommandTimer = millis();
   }
 
-  if (hoistMotorPWM == BRAKE_COMMAND)
+  if (hoistMotorPWM == PWM_BRAKE_FLAG && gantryMode == BRAKE_MODE)
   {
     hoistMotorPWM = 0;
     brakeHoistMotor = true;
-  }
-  else
-  {
-    brakeHoistMotor = false;
+    hoistBrakeCommandTimer = millis();
   }
 
   if (limitSwitchEncoderSideState && trolleyMotorPWM < 0)
   {
     trolleyMotorPWM = 0;
   }
-  if (limitSwitchTrolleyMotorSideState && trolleyMotorPWM > 0)
-  {
-    trolleyMotorPWM = 0;
-  }
+  // if (limitSwitchTrolleyMotorSideState && trolleyMotorPWM > 0)
+  // {
+  //   trolleyMotorPWM = 0;
+  // }
 }
 
 void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
@@ -167,13 +102,22 @@ void trolleyMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_t
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float trolleyMotorVoltage = trolleyMotorVoltageMovingAverage.getMovingAverage() * 3.1694367498;
-    if (trolleyMotorPWM < 0)
+    if (trolleyMotorPWM < 0 || trolleySpeed < 0) // || lastTrolleyMotorVoltage < 0.0)
     {
-      trolleyMotorVoltage = -trolleyMotorVoltage;
+      trolleyMotorVoltage = -fabs(trolleyMotorVoltage);
     }
-    trolleyMotorVoltageMessage.data = trolleyMotorVoltage;
+    if (trolleyMotorPWM != 0 && trolleyMotorVoltage == 0.0){ // Noise Hanle
+      trolleyMotorVoltage = lastTrolleyMotorVoltage;
+    }
+    if (trolleyMotorPWM == 0 && fabs(trolleyMotorVoltage) > 0.0){  // Noise Handle
+      trolleyMotorVoltage = 0;
+    }
+    float trolleyMotorVoltage_ = trolleyMotorVoltage * 3.173492867;
+    trolleyMotorVoltageMovingAverage.addValue(trolleyMotorVoltage_);
+    trolleyMotorVoltageMessage.data = roundToThreeDecimalPlaces(trolleyMotorVoltageMovingAverage.getMovingAverage());
+    // trolleyMotorVoltageMessage.data = trolleyMotor.currentPWM;
     RCSOFTCHECK(rcl_publish(&trolleyMotorVoltagePublisher, &trolleyMotorVoltageMessage, NULL));
+    lastTrolleyMotorVoltage = trolleyMotorVoltage;
   }
 }
 
@@ -182,13 +126,26 @@ void hoistMotorVoltagePubTimerCallback(rcl_timer_t *timer, int64_t last_call_tim
   RCLC_UNUSED(last_call_time);
   if (timer != NULL)
   {
-    float hoistMotorVoltage = hoistMotorVoltageMovingAverage.getMovingAverage() * 3.179049377;
-    if (hoistMotorPWM < 0)
+    if (hoistMotorPWM < 0) // || lastHoistMotorVoltage < 0.0)
     {
-      hoistMotorVoltage = -hoistMotorVoltage;
+      hoistMotorVoltage = -fabs(hoistMotorVoltage);
     }
-    hoistMotorVoltageMessage.data = hoistMotorVoltage;
+    if (hoistMotorPWM != 0 && hoistMotorVoltage == 0.0){  // Noise Handle
+      hoistMotorVoltage = lastHoistMotorVoltage;
+    }
+    if (hoistMotorPWM == 0 && fabs(hoistMotorVoltage) > 0.0){  // Noise Handle
+      hoistMotorVoltage = 0;
+    }
+
+    float hoistMotorVoltage_ = hoistMotorVoltage * 3.13675602;
+    hoistMotorVoltageMovingAverage.addValue(hoistMotorVoltage_);
+
+    hoistMotorVoltageMessage.data = roundToThreeDecimalPlaces(hoistMotorVoltageMovingAverage.getMovingAverage());
+    // hoistMotorVoltageMessage.data = trolleyMotor.currentPWM;
+    // hoistMotorVoltageMessage.data = hoistMotor.currentPWM;
+    // hoistMotorVoltageMessage.data = brakeHoistMotor;
     RCSOFTCHECK(rcl_publish(&hoistMotorVoltagePublisher, &hoistMotorVoltageMessage, NULL));
+    lastHoistMotorVoltage = hoistMotorVoltage;
   }
 }
 
@@ -213,14 +170,14 @@ void initTrolleyPositionPublisher()
   RCCHECK(rclc_executor_add_timer(&positionPubExecutor, &positionPubTimer));
 }
 
-void initMotorPWMSubscriber()
+void initControllerCommandSubscriber()
 {
   // motor PWM subscriber init
   RCCHECK(rclc_subscription_init_default(
       &controllerCommandSubscriber,
       &microcontrollerGantryNode,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
-      MOTOR_PWM_TOPIC_NAME));
+      CONTROLLER_COMMAND_TOPIC_NAME));
 
   // motor PWM executor init
   RCCHECK(rclc_executor_init(&controllerCommandExecutor, &support.context, 1, &allocator));
@@ -269,27 +226,6 @@ void initHoistMotorVoltagePublisher()
   RCCHECK(rclc_executor_add_timer(&hoistMotorVoltageExecutor, &hoistMotorVoltagePubTimer));
 }
 
-void initLimitSwitchPublisher()
-{
-  // limit switches publisher init
-  RCCHECK(rclc_publisher_init_default(
-      &limitSwitchPublisher,
-      &microcontrollerGantryNode,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8),
-      LIMIT_SWITCH_TOPIC_NAME));
-
-  // limit switch timer init
-  RCCHECK(rclc_timer_init_default(
-      &limitSwitchPubTimer,
-      &support,
-      RCL_MS_TO_NS(LIMIT_SWITCH_PUBLISH_PERIOD_MS),
-      publishLimitSwitchState));
-
-  // limit switch executor init
-  RCCHECK(rclc_executor_init(&limitSwitchExecutor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&limitSwitchExecutor, &limitSwitchPubTimer));
-}
-
 void microROSInit()
 {
   // Configure serial transport
@@ -305,7 +241,7 @@ void microROSInit()
   RCCHECK(rclc_node_init_default(&microcontrollerGantryNode, NODE_NAME, "", &support));
 
   // init motor PWM subscriber
-  initMotorPWMSubscriber();
+  initControllerCommandSubscriber();
 
   // init trolley position publisher
   initTrolleyPositionPublisher();
@@ -315,9 +251,6 @@ void microROSInit()
 
   // init hoist motor voltage publisher
   initHoistMotorVoltagePublisher();
-
-  // init limit switch publisher
-  // initLimitSwitchPublisher();
 }
 
 #endif // MICRO_ROS_HPP

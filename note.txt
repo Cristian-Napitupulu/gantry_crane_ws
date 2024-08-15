@@ -1,0 +1,9 @@
+/home/icodes/Documents/gantry_crane_ws/note.txt
+
+ros2 topic list
+
+ros2 topic echo /trolley_position
+
+ros2 topic echo /nama_topic
+
+./setup.sh

@@ -1,0 +1,3 @@
+uint8 mode
+uint16 trolley_motor_pwm
+uint16 hoist_motor_pwm

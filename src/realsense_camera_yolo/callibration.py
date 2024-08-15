@@ -1,171 +1,276 @@
-# Input three point s A, B, C and run this script to get the callibration matrix
-# A is the center of container
-# B is the right-left of container
-# C is the top-bottom of container
-# A, B, C should make a right angle
-# Where A is the right angle
-# And AB is the direction of the trolley
-# For complete instruction, please refer to the README.md
-
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d import Axes3D
+
+# Container dimensions
+CONTAINER_LENGTH = 0.3
+CONTAINER_WIDTH = 0.1
+CONTAINER_HEIGHT = 0.1
 
 # Points from measurement with realsense camera
-point_A = np.array([0.0234, -0.026, 0.4928])
-point_B = np.array([0.056, -0.029, 0.492])
-point_C = np.array([0.029, -0.131, 0.505])
-# Print points
-for point, label in zip([point_A, point_B, point_C], ["A", "B", "C"]):
-    print(f"Point {label}:", tuple(point))
-print("")
+POINT_A = np.array([0.0234, -0.026, 0.4928])
+POINT_B = np.array([0.056, -0.029, 0.492])
+POINT_C = np.array([0.029, -0.131, 0.505])
 
 
-# Create a vector from A to B
-vector_AB = point_B - point_A
-print("Vector AB:", tuple(vector_AB))
+def print_points():
+    """Print the coordinates of points A, B, and C."""
+    for point, label in zip([POINT_A, POINT_B, POINT_C], ["A", "B", "C"]):
+        print(f"Point {label}: {tuple(point)}")
+    print("")
 
-# Create a vector from A to C
-vector_AC = point_C - point_A
-print("Vector AC:", tuple(vector_AC))
-print("")
 
-# Calculate the cross product of AB and AC
-# This will be the direction vector of the normal line
-# The normal line is the line that is perpendicular to the plane of the container
-# The normal line pierces through the center of the container (point  A)
-normal_line_direction_vector = np.cross(vector_AB, vector_AC)
-normal_line_direction_vector = normal_line_direction_vector / np.linalg.norm(
-    normal_line_direction_vector
-)
+def vector_operations():
+    """Perform vector calculations for the points."""
+    vector_AB = POINT_B - POINT_A
+    unit_vector_AB = vector_AB / np.linalg.norm(vector_AB)
 
-print("Normal line direction vector:", tuple(normal_line_direction_vector))
-print(
-    "Normal line equation: X = ({}, {}, {}) + t*({}, {}, {})".format(
-        *point_A, *normal_line_direction_vector
+    vector_AC = POINT_C - POINT_A
+    unit_vector_AC = vector_AC / np.linalg.norm(vector_AC)
+
+    normal_line_direction_vector = np.cross(vector_AB, vector_AC)
+    normal_line_direction_vector /= np.linalg.norm(normal_line_direction_vector)
+
+    angle_between_AB_AC = np.rad2deg(
+        np.arccos(
+            np.dot(vector_AB, vector_AC)
+            / (np.linalg.norm(vector_AB) * np.linalg.norm(vector_AC))
+        )
     )
-)
-print("")
 
-# Calculate the normal plane equation
-# The plane equation is in the form of Ax + By + Cz + D = 0
-# Where A, B, C are the components of vector AC
-# And D is A * point_A_x + B * point_A_y + C * point_A_z
-normal_plane_A = vector_AC[0]
-normal_plane_B = vector_AC[1]
-normal_plane_C = vector_AC[2]
-normal_plane_D = -(
-    normal_plane_A * point_A[0]
-    + normal_plane_B * point_A[1]
-    + normal_plane_C * point_A[2]
-)
-normal_plane_vector = np.array([normal_plane_A, normal_plane_B, normal_plane_C])
-
-print(
-    "Plane equation: {}x + {}y + {}z + {} = 0".format(
-        normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D
+    return (
+        unit_vector_AB,
+        unit_vector_AC,
+        normal_line_direction_vector,
+        angle_between_AB_AC,
     )
-)
-print("")
 
-# Calculate line equation that parallel to vector AC and pierces through origin
-# This line equation is in the form of (x, y, z) = t*(a, b, c)
-# Where a, b, c are the components of vector AC
-line_direction_vector = vector_AC
 
-# Calculate which point on the line that is on the normal plane
-# Substitute the line equation into the normal plane equation
-# And solve for t
+def calculate_plane_equation(normal_vector, point):
+    """Calculate the plane equation Ax + By + Cz + D = 0."""
+    A, B, C = normal_vector
+    D = -np.dot(normal_vector, point)
+    return A, B, C, D
 
-t = -normal_plane_D / (np.dot(normal_plane_vector, line_direction_vector))
-# print("t: {}".format(t))
 
-# Calculate the point on the line that is on the normal plane
-point_on_line_on_plane = t * line_direction_vector
-print("Point on line on normal plane:", tuple(point_on_line_on_plane))
-print("")
+def calculate_line_intersection(normal_vector, line_direction_vector, D):
+    """Find the point on the line that lies on the plane."""
+    t = -D / np.dot(normal_vector, line_direction_vector)
+    return t * line_direction_vector
 
-# Find the closest point on the normal line to the point on the line on the plane
-t = np.dot(normal_line_direction_vector, point_on_line_on_plane - point_A) / np.dot(
-    normal_line_direction_vector, normal_line_direction_vector
-)
-# print("t: {}".format(t))
 
-point_O = point_A + t * normal_line_direction_vector
-print("Point O:", tuple(point_O))
+def find_closest_point_on_line(normal_vector, point_A, target_point):
+    """Find the closest point on the normal line to the target point."""
+    t = np.dot(normal_vector, target_point - point_A) / np.dot(
+        normal_vector, normal_vector
+    )
+    return point_A + t * normal_vector
 
-# Calculate the distance between point O and origin
-distance_O = np.linalg.norm(point_O)
-print("Distance O to origin: {}".format(distance_O))
-print("")
 
-# Calculate the distance between point O and point A
-distance_OA = np.linalg.norm(point_O - point_A)
-print("Distance O to point A: {}".format(distance_OA))
-print("")
+def print_calibration_matrix(
+    normal_plane_vector, normal_line_direction_vector, point_O
+):
+    """Print the calibration matrix."""
+    print("Calibration matrix:")
+    print("// Normal plane parameters from equation: Ax + By + Cz + D = 0")
+    for i, label in enumerate(["A", "B", "C", "D"]):
+        print(f"#define NORMAL_PLANE_{label} {normal_plane_vector[i]:.7f}")
+    print(
+        "// Normal line parameters from equation: (x, y, z) = (x_1, y_1, z_1) + t * (A, B, C)"
+    )
+    for i, label in enumerate(["A", "B", "C"]):
+        print(f"#define NORMAL_LINE_{label} {normal_line_direction_vector[i]:.7f}")
+    print("// Trolley origin (x0, y0, z0)")
+    for i, label in enumerate(["X", "Y", "Z"]):
+        print(f"#define TROLLEY_ORIGIN_{label} {point_O[i]:.7f}")
+    print("")
 
-# Print the callibration matrix
-print("Callibration matrix:")
-print("// Normal plane parameters from equation: Ax + By + Cz + D = 0")
-print("#define NORMAL_PLANE_A {:.7f}".format(normal_plane_A))
-print("#define NORMAL_PLANE_B {:.7f}".format(normal_plane_B))
-print("#define NORMAL_PLANE_C {:.7f}".format(normal_plane_C))
-print("#define NORMAL_PLANE_D {:.7f}".format(normal_plane_D))
-print("// Normal line parameters from equation: (x, y, z) = (x_1, y_1, z_1) + t * (A, B, C)")
-print("#define NORMAL_LINE_A {:.7f}".format(normal_line_direction_vector[0]))
-print("#define NORMAL_LINE_B {:.7f}".format(normal_line_direction_vector[1]))
-print("#define NORMAL_LINE_C {:.7f}".format(normal_line_direction_vector[2]))
-print("// Trolley origin (x0, y0, z0)")
-print("#define TROLLEY_ORIGIN_X {:.7f}".format(point_O[0]))
-print("#define TROLLEY_ORIGIN_Y {:.7f}".format(point_O[1]))
-print("#define TROLLEY_ORIGIN_Z {:.7f}".format(point_O[2]))
-print("")
 
-# Draw the normal line and the normal plane
-# The normal line is the line that is perpendicular to the plane of the container
-# The normal line pierces through the center of the container (point  A)
-# The normal plane is the plane that is perpendicular to the vector AC
-# The normal plane pierces through the center of the container (point  A)
-# The normal line is on the normal plane
-# Limit of the plot
-limit = distance_OA
+def draw_container(
+    ax, center_top, size, unit_vector_AB, unit_vector_AC, unit_vector_OA
+):
+    """Draw the container on the 3D plot."""
+    dx, dy, dz = size
+    vertices = np.array(
+        [
+            center_top + dx / 2 * unit_vector_AC + dy / 2 * unit_vector_AB,
+            center_top + dx / 2 * unit_vector_AC - dy / 2 * unit_vector_AB,
+            center_top - dx / 2 * unit_vector_AC - dy / 2 * unit_vector_AB,
+            center_top - dx / 2 * unit_vector_AC + dy / 2 * unit_vector_AB,
+            center_top
+            + dx / 2 * unit_vector_AC
+            + dy / 2 * unit_vector_AB
+            - dz * unit_vector_OA,
+            center_top
+            + dx / 2 * unit_vector_AC
+            - dy / 2 * unit_vector_AB
+            - dz * unit_vector_OA,
+            center_top
+            - dx / 2 * unit_vector_AC
+            - dy / 2 * unit_vector_AB
+            - dz * unit_vector_OA,
+            center_top
+            - dx / 2 * unit_vector_AC
+            + dy / 2 * unit_vector_AB
+            - dz * unit_vector_OA,
+        ]
+    )
 
-x_plane = np.linspace(-limit, limit, 10)
-y_plane = np.linspace(-limit, limit, 10)
-X_plane, Y_plane = np.meshgrid(x_plane, y_plane)
-Z_plane = (
-    (-normal_plane_A * X_plane - normal_plane_B * Y_plane - normal_plane_D)
-    * 1.0
-    / normal_plane_C
-)
+    faces = [
+        [vertices[j] for j in [0, 1, 2, 3]],
+        [vertices[j] for j in [4, 5, 6, 7]],
+        [vertices[j] for j in [0, 3, 7, 4]],
+        [vertices[j] for j in [1, 2, 6, 5]],
+        [vertices[j] for j in [0, 1, 5, 4]],
+        [vertices[j] for j in [2, 3, 7, 6]],
+    ]
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-ax.plot_surface(X_plane, Y_plane, Z_plane, alpha=0.5)
+    for vertice in vertices:
+        ax.scatter(vertice[0], vertice[1], vertice[2], color="k", marker=".", alpha=0)
+    ax.add_collection3d(
+        Poly3DCollection(
+            faces,
+            facecolors=plt.get_cmap("tab20")(0),
+            linewidths=1,
+            edgecolors=plt.get_cmap("tab20")(2),
+            alpha=0.15,
+            label="Container",
+        )
+    )
 
-normal_line_points = np.array(
-    [point_A + t * normal_line_direction_vector for t in np.linspace(-10, 10, 100)]
-)
 
-ax.plot(
-    normal_line_points[:, 0],
-    normal_line_points[:, 1],
-    normal_line_points[:, 2],
-    color="g",
-    linewidth=2.0,
-    alpha=0.5,
-)
+def draw_axes(ax, origin, unit_vectors, length, axis_names, colors, label_prefix=""):
+    """Draw the coordinate axes on the 3D plot."""
+    origin = np.array(origin)  # Convert origin to a NumPy array
+    unit_vectors = np.array(unit_vectors)  # Convert unit_vectors to a NumPy array
 
-ax.scatter(point_A[0], point_A[1], point_A[2], color="k", marker=".")
-ax.scatter(point_B[0], point_B[1], point_B[2], color="k", marker=".")
-ax.scatter(point_C[0], point_C[1], point_C[2], color="k", marker=".")
-ax.scatter(point_O[0], point_O[1], point_O[2], color="r", marker="o")
-ax.scatter(0, 0, 0, color="b", marker="x")
-ax.set_xlabel("X")
-ax.set_ylabel("Y")
-ax.set_zlabel("Z")
-ax.set_xlim(-limit, limit)
-ax.set_ylim(-limit, limit)
-ax.set_zlim(-limit, limit)
+    for i, axis in enumerate(axis_names):
+        ax.quiver(
+            *origin, *unit_vectors[i], color=colors[i], length=length, normalize=True
+        )
+        ax.text(
+            *(origin + unit_vectors[i] * length),
+            f"{label_prefix}{axis}",
+            color=colors[i],
+        )
 
-ax.view_init(azim=-90, elev=-90)
-plt.show()
+
+def set_axes_equal(ax):
+    """Set the aspect ratio of 3D plot axes to be equal."""
+    limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
+    origin = np.mean(limits, axis=1)
+    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+    ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
+    ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
+    ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
+    return origin, radius
+
+
+def plot_results():
+    """Plot the results of the calculations and draw the 3D plot."""
+    unit_vector_AB, unit_vector_AC, unit_vector_OA, angle_between_AB_AC = (
+        vector_operations()
+    )
+
+    normal_plane_vector = unit_vector_AC
+    normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D = (
+        calculate_plane_equation(normal_plane_vector, POINT_A)
+    )
+
+    point_on_line_on_plane = calculate_line_intersection(
+        normal_plane_vector, unit_vector_AC, normal_plane_D
+    )
+    point_O = find_closest_point_on_line(
+        unit_vector_OA, POINT_A, point_on_line_on_plane
+    )
+
+    print_calibration_matrix(
+        [normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D],
+        unit_vector_OA,
+        point_O,
+    )
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    draw_container(
+        ax,
+        POINT_A,
+        [CONTAINER_LENGTH, CONTAINER_WIDTH, CONTAINER_HEIGHT],
+        unit_vector_AB,
+        unit_vector_AC,
+        unit_vector_OA,
+    )
+    draw_axes(
+        ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], 0.05, ["X", "Y", "Z"], "rgb"
+    )
+    draw_axes(
+        ax,
+        point_O,
+        [-unit_vector_AB, -unit_vector_AC, -unit_vector_OA],
+        0.05,
+        ["X'", "Z'", "Y'"],
+        "cym",
+    )
+
+    ax.scatter(
+        *point_O, color=plt.get_cmap("tab20")(4), marker="o", s=30, label="Origin Troli"
+    )
+    ax.scatter(
+        0, 0, 0, color=plt.get_cmap("tab20")(6), marker="o", s=30, label="Origin LiDAR"
+    )
+    ax.scatter(*POINT_A, color=plt.get_cmap("tab20")(8), marker=".", label="Titik A")
+    ax.scatter(*POINT_B, color=plt.get_cmap("tab20")(10), marker=".", label="Titik B")
+    ax.scatter(*POINT_C, color=plt.get_cmap("tab20")(12), marker=".", label="Titik C")
+
+    ax.plot(
+        [POINT_A[0], 0],
+        [POINT_A[1], 0],
+        [POINT_A[2], 0],
+        color=plt.get_cmap("tab20")(14),
+        linestyle="-.",
+        label="Jarak LiDAR ke titik A",
+    )
+    ax.plot(
+        [POINT_A[0], point_O[0]],
+        [POINT_A[1], point_O[1]],
+        [POINT_A[2], point_O[2]],
+        color=plt.get_cmap("tab20")(16),
+        label="Tali Gantry",
+    )
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+
+    _origin, _radius = set_axes_equal(ax)
+    print(_origin, _radius)
+
+    x_plane = np.linspace(_origin[0] - _radius, _origin[0] + _radius, 10)
+    z_plane = np.linspace(_origin[2] - _radius, _origin[2] + _radius, 10)
+    X_plane, Z_plane = np.meshgrid(x_plane, z_plane)
+    Y_plane = (
+        -normal_plane_A * X_plane - normal_plane_C * Z_plane - normal_plane_D
+    ) / normal_plane_B
+    Y_plane[(Y_plane < _origin[1] - _radius) | (Y_plane > _origin[1] + _radius)] = (
+        np.nan
+    )
+    ax.plot_surface(
+        X_plane,
+        Y_plane,
+        Z_plane,
+        color=plt.get_cmap("tab20")(18),
+        alpha=0.1,
+        label="Bidang Kerja Gantry",
+    )
+
+    ax.view_init(elev=-165, azim=135, roll=0)
+    plt.legend()
+    plt.show()
+
+
+if __name__ == "__main__":
+    print_points()
+    plot_results()

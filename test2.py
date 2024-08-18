@@ -12,6 +12,7 @@ CONTAINER_HEIGHT = 0.141
 POINT_A = np.array([0.0234, -0.026, 0.4928])
 POINT_B = np.array([0.056, -0.029, 0.492])
 POINT_C = np.array([0.029, -0.131, 0.505])
+ACTUAL_CABLE_LENGTH = 0.5
 
 
 def print_points():
@@ -166,12 +167,25 @@ def set_axes_equal(ax):
     ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
     return origin, radius
 
+def distance_point_to_point(point1, point2):
+    return np.linalg.norm(point1 - point2)
+
 
 def plot_results():
     """Plot the results of the calculations and draw the 3D plot."""
     unit_vector_AB, unit_vector_AC, unit_vector_OA, angle_between_AB_AC = (
         vector_operations()
     )
+
+    unit_vector_gravity = np.cross(unit_vector_AB, unit_vector_AC)
+    unit_vector_gravity /= np.linalg.norm(unit_vector_gravity)
+
+    dummy_point = POINT_A + unit_vector_gravity * ACTUAL_CABLE_LENGTH
+
+    if (distance_point_to_point(dummy_point, [0, 0, 0]) > distance_point_to_point(POINT_A, [0, 0, 0])):
+        unit_vector_gravity = -unit_vector_gravity
+    
+    point_O = POINT_A + unit_vector_gravity * ACTUAL_CABLE_LENGTH
 
     normal_plane_vector = unit_vector_AC
     normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D = (
@@ -181,9 +195,9 @@ def plot_results():
     point_on_line_on_plane = calculate_line_intersection(
         normal_plane_vector, unit_vector_AC, normal_plane_D
     )
-    point_O = find_closest_point_on_line(
-        unit_vector_OA, POINT_A, point_on_line_on_plane
-    )
+    # point_O = find_closest_point_on_line(
+    #     unit_vector_OA, POINT_A, point_on_line_on_plane
+    # )
 
     print_calibration_matrix(
         [normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D],
@@ -194,6 +208,30 @@ def plot_results():
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 
+
+    ax.scatter(
+        0, 0, 0, color=plt.get_cmap("tab20")(6), marker="o", s=30, label="Origin LiDAR"
+    )
+    ax.scatter(
+        *point_O, color=plt.get_cmap("tab20")(4), marker="o", s=30, label="Pusat Troli"
+    )
+
+    # draw_axes(
+    #     ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], 0.05, ["X", "Y", "Z"], "rgb"
+    # )
+    # draw_axes(
+    #     ax,
+    #     point_O,
+    #     [-unit_vector_AB, -unit_vector_AC, -unit_vector_OA],
+    #     0.05,
+    #     ["X'", "Z'", "Y'"],
+    #     "cym",
+    # )
+
+    ax.scatter(*POINT_A, color=plt.get_cmap("tab20")(8), marker=".", label="Titik A")
+    ax.scatter(*POINT_B, color=plt.get_cmap("tab20")(10), marker=".", label="Titik B")
+    ax.scatter(*POINT_C, color=plt.get_cmap("tab20")(12), marker=".", label="Titik C")
+
     draw_container(
         ax,
         POINT_A,
@@ -202,43 +240,22 @@ def plot_results():
         unit_vector_AC,
         unit_vector_OA,
     )
-    draw_axes(
-        ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], 0.05, ["X", "Y", "Z"], "rgb"
-    )
-    draw_axes(
-        ax,
-        point_O,
-        [-unit_vector_AB, -unit_vector_AC, -unit_vector_OA],
-        0.05,
-        ["X'", "Z'", "Y'"],
-        "cym",
-    )
 
-    ax.scatter(
-        *point_O, color=plt.get_cmap("tab20")(4), marker="o", s=30, label="Origin Troli"
-    )
-    ax.scatter(
-        0, 0, 0, color=plt.get_cmap("tab20")(6), marker="o", s=30, label="Origin LiDAR"
-    )
-    ax.scatter(*POINT_A, color=plt.get_cmap("tab20")(8), marker=".", label="Titik A")
-    ax.scatter(*POINT_B, color=plt.get_cmap("tab20")(10), marker=".", label="Titik B")
-    ax.scatter(*POINT_C, color=plt.get_cmap("tab20")(12), marker=".", label="Titik C")
-
-    ax.plot(
-        [POINT_A[0], 0],
-        [POINT_A[1], 0],
-        [POINT_A[2], 0],
-        color=plt.get_cmap("tab20")(14),
-        linestyle="-.",
-        label="Jarak LiDAR ke titik A",
-    )
-    ax.plot(
-        [POINT_A[0], point_O[0]],
-        [POINT_A[1], point_O[1]],
-        [POINT_A[2], point_O[2]],
-        color=plt.get_cmap("tab20")(16),
-        label="Tali Gantry",
-    )
+    # ax.plot(
+    #     [POINT_A[0], 0],
+    #     [POINT_A[1], 0],
+    #     [POINT_A[2], 0],
+    #     color=plt.get_cmap("tab20")(14),
+    #     linestyle="-.",
+    #     label="Jarak LiDAR ke titik A",
+    # )
+    # ax.plot(
+    #     [POINT_A[0], point_O[0]],
+    #     [POINT_A[1], point_O[1]],
+    #     [POINT_A[2], point_O[2]],
+    #     color=plt.get_cmap("tab20")(16),
+    #     label="Tali Gantry",
+    # )
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
@@ -248,13 +265,13 @@ def plot_results():
     _origin, _radius = set_axes_equal(ax)
     print(_origin, _radius)
 
-    x_plane = np.linspace(_origin[0] - _radius, _origin[0] + _radius, 10)
-    z_plane = np.linspace(_origin[2] - _radius, _origin[2] + _radius, 10)
+    x_plane = np.linspace(_origin[0] - _radius * 1.5, _origin[0] + _radius * 1.5, 10)
+    z_plane = np.linspace(_origin[2] - _radius * 1.5, _origin[2] + _radius * 1.5, 10)
     X_plane, Z_plane = np.meshgrid(x_plane, z_plane)
     Y_plane = (
         -normal_plane_A * X_plane - normal_plane_C * Z_plane - normal_plane_D
     ) / normal_plane_B
-    Y_plane[(Y_plane < _origin[1] - _radius) | (Y_plane > _origin[1] + _radius)] = (
+    Y_plane[(Y_plane < _origin[1] - _radius * 1.5) | (Y_plane > _origin[1] + _radius * 1.5)] = (
         np.nan
     )
     ax.plot_surface(
@@ -262,11 +279,56 @@ def plot_results():
         Y_plane,
         Z_plane,
         color=plt.get_cmap("tab20")(18),
-        alpha=0.1,
+        alpha=0.3,
         label="Bidang Kerja Gantry",
     )
 
-    ax.view_init(elev=-165, azim=135, roll=0)
+    unit_vector_O = point_O / np.linalg.norm(point_O)
+    # ax.quiver(
+    #     *[0,0,0],
+    #     *unit_vector_O,
+    #     color="k",
+    #     length=np.linalg.norm(point_O),
+    #     normalize=True,
+    #     label="Unit Vector O",
+    # )
+
+    bridge_unit_vector = np.cross(unit_vector_O, unit_vector_gravity)
+    bridge_unit_vector /= np.linalg.norm(bridge_unit_vector)
+    # ax.quiver(
+    #     *point_O,
+    #     *bridge_unit_vector,
+    #     color="k",
+    #     length=0.1,
+    #     normalize=True,
+    #     label="Unit Vector Bridge",
+    # )
+
+    bridge_origin_point = point_O + bridge_unit_vector * _radius * 1.5
+    # ax.scatter(*bridge_origin_point, color="k", marker="o", s=30, label="Bridge Origin")
+
+    bridge_end_point = point_O - bridge_unit_vector * _radius * 1.5
+    # ax.scatter(*bridge_end_point, color="k", marker="o", s=30, label="Bridge End")
+
+    ax.plot(
+        [bridge_origin_point[0], bridge_end_point[0]],
+        [bridge_origin_point[1], bridge_end_point[1]],
+        [bridge_origin_point[2], bridge_end_point[2]],
+        color="k",
+        label="Bridge",
+    )
+
+    ax.quiver(
+        *point_O,
+        *unit_vector_OA,
+        color="k",
+        length=0.1,
+        normalize=True,
+        label="Unit Vector OA",
+    )
+
+    ax.view_init(elev=-90, azim=90, roll=0)
+    # ax.view_init(elev=-175, azim=130, roll=0)
     plt.legend()
     plt.show()
 

@@ -3,28 +3,24 @@
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
             "matrix_alpha": {
-                "value": [[5.0, 0.0], [0.0, 0.7]],
+                "value": [[9.991771865656693, 0.0], [0.0, 10.0]],
                 "description": "Matrix Alpha: [[alpha1, 0], [0, alpha2]]"
             },
             "matrix_beta": {
-                "value": [[5.0, 0.0], [0.0, 2.5]],
+                "value": [[6.948992755176131, 0.0], [0.0, 4.96335651465302]],
                 "description": "Matrix Beta: [[beta1, 0], [0, beta2]]"
             },
             "matrix_lambda": {
-                "value": [[3.0], [1.0]],
+                "value": [[10.0], [0.10382971167011029]],
                 "description": "Matrix Lambda: [[lambda1], [lambda2]]"
             },
             "matrix_k": {
-                "value": [[7.5], [12.0]],
+                "value": [[9.761173851303303], [10.0]],
                 "description": "Matrix K: [[k1], [k2]]"
             },
             "matrix_gamma": {
                 "value": [[4.0], [3.50]],
                 "description": "Matrix Gamma: [[gamma1], [gamma2]]"
-            },
-            "trolley_control_input_range": {
-                "value": [-12.0, 12.0],
-                "description": "Trolley Control Input Range: [[min1, max1], [min2, max2]]"
             }
         }
     }

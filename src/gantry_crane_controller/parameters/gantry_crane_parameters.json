@@ -2,100 +2,131 @@
     "gantry_crane_system_model": {
         "last_update": "2019-01-01 00:00:00",
         "parameters": {
+            "trolley_motor_torque_constant": {
+                "value": 9.996642374888763,
+                "unit": "Nm/A",
+                "description": "Torque constant of the trolley motor",
+                "measured": false
+            },
+            "trolley_motor_back_emf_constant": {
+                "value": 0.15857108594072455,
+                "unit": "V/(rad/s)",
+                "description": "Back EMF constant of the trolley motor",
+                "measured": false
+            },
+            "trolley_motor_rotator_inertia": {
+                "value": 3.8591231863869067,
+                "unit": "kg.m^2",
+                "description": "Rotational inertia of the trolley motor rotor",
+                "measured": false
+            },
+            "trolley_motor_damping_coefficient": {
+                "value": 1.6037325053290936,
+                "unit": "Ns.m/rad",
+                "description": "Damping coefficient of the trolley motor",
+                "measured": false
+            },
+            "trolley_damping_coefficient": {
+                "value": 7.696740760830231,
+                "unit": "Ns/m",
+                "description": "Damping coefficient of the trolley",
+                "measured": false
+            },
+            "hoist_motor_back_emf_constant": {
+                "value": 0.2996329791197189,
+                "unit": "V/(rad/s)",
+                "description": "Back EMF constant of the hoist motor",
+                "measured": false
+            },
+            "hoist_motor_rotator_inertia": {
+                "value": 0.18846135112775028,
+                "unit": "kg.m^2",
+                "description": "Rotational inertia of the hoist motor rotor",
+                "measured": false
+            },
+            "hoist_motor_torque_constant": {
+                "value": 9.998642357387126,
+                "unit": "Nm/A",
+                "description": "Torque constant of the hoist motor",
+                "measured": false
+            },
+            "hoist_motor_damping_coefficient": {
+                "value": 0.009531107399123431,
+                "unit": "Ns.m/rad",
+                "description": "Damping coefficient of the hoist motor",
+                "measured": false
+            },
+            "cable_damping_coefficient": {
+                "value": 3.357840834816178,
+                "unit": "Ns/m",
+                "description": "Damping coefficient of the cable",
+                "measured": false
+            },
+            "trolley_motor_activation_threshold_voltage": {
+                "value": 3.0,
+                "unit": "V",
+                "description": "Activation threshold voltage of the trolley motor",
+                "measured": true
+            },
+            "hoist_motor_activation_threshold_voltage": {
+                "value": 3.0,
+                "unit": "V",
+                "description": "Activation threshold voltage of the hoist motor",
+                "measured": true
+            },
             "trolley_mass": {
                 "value": 2.0,
                 "unit": "kg",
-                "description": "Mass of the trolley"
+                "description": "Mass of the trolley",
+                "measured": true
             },
             "container_mass": {
                 "value": 1.128,
                 "unit": "kg",
-                "description": "Mass of the container"
-            },
-            "trolley_damping_coefficient": {
-                "value": 0.5,
-                "unit": "Ns/m",
-                "description": "Damping coefficient of the trolley"
-            },
-            "cable_damping_coefficient": {
-                "value": 10.0,
-                "unit": "Ns/m",
-                "description": "Damping coefficient of the cable"
+                "description": "Mass of the container",
+                "measured": true
             },
             "gravity_acceleration": {
                 "value": 9.81,
                 "unit": "m/s^2",
-                "description": "Acceleration due to gravity"
-            },
-            "trolley_motor_inductance": {
-                "value": 0.0001048,
-                "unit": "H",
-                "description": "Inductance of the trolley motor"
-            },
-            "trolley_motor_resistance": {
-                "value": 0.39,
-                "unit": "ohm",
-                "description": "Resistance of the trolley motor"
-            },
-            "trolley_motor_rotator_inertia": {
-                "value": 0.00008859375,
-                "unit": "kg.m^2",
-                "description": "Rotational inertia of the trolley motor rotor"
-            },
-            "trolley_motor_damping_coefficient": {
-                "value": 0.0004,
-                "unit": "Ns.m/rad",
-                "description": "Damping coefficient of the trolley motor"
-            },
-            "trolley_motor_pulley_radius": {
-                "value": 0.015,
-                "unit": "m",
-                "description": "Radius of the pulley connected to the trolley motor"
-            },
-            "trolley_motor_torque_constant": {
-                "value": 20.03,
-                "unit": "Nm/A",
-                "description": "Torque constant of the trolley motor"
-            },
-            "trolley_motor_back_emf_constant": {
-                "value": 0.00818,
-                "unit": "V/(rad/s)",
-                "description": "Back EMF constant of the trolley motor"
+                "description": "Acceleration due to gravity",
+                "measured": true
             },
             "hoist_motor_inductance": {
                 "value": 0.0073,
                 "unit": "H",
-                "description": "Inductance of the hoist motor"
+                "description": "Inductance of the hoist motor",
+                "measured": true
             },
             "hoist_motor_resistance": {
                 "value": 9.5,
                 "unit": "ohm",
-                "description": "Resistance of the hoist motor"
-            },
-            "hoist_motor_rotator_inertia": {
-                "value": 0.000015625,
-                "unit": "kg.m^2",
-                "description": "Rotational inertia of the hoist motor rotor"
-            },
-            "hoist_motor_damping_coefficient": {
-                "value": 0.0008,
-                "unit": "Ns.m/rad",
-                "description": "Damping coefficient of the hoist motor"
+                "description": "Resistance of the hoist motor",
+                "measured": true
             },
             "hoist_motor_pulley_radius": {
-                "value": 0.015,
+                "value": 0.0075,
                 "unit": "m",
-                "description": "Radius of the pulley connected to the hoist motor"
+                "description": "Radius of the pulley connected to the hoist motor",
+                "measured": true
             },
-            "hoist_motor_torque_constant": {
-                "value": 33.54,
-                "unit": "Nm/A",
-                "description": "Torque constant of the hoist motor"
+            "trolley_motor_inductance": {
+                "value": 0.0001048,
+                "unit": "H",
+                "description": "Inductance of the trolley motor",
+                "measured": true
             },
-            "hoist_motor_back_emf_constant": {
-                "value": 0.00818,
-                "unit": "V/(rad/s)",
-                "description": "Back EMF constant of the hoist motor"
+            "trolley_motor_resistance": {
+                "value": 0.39,
+                "unit": "ohm",
+                "description": "Resistance of the trolley motor",
+                "measured": true
+            },
+            "trolley_motor_pulley_radius": {
+                "value": 0.0075,
+                "unit": "m",
+                "description": "Radius of the pulley connected to the trolley motor",
+                "measured": true
             }
         }
     }

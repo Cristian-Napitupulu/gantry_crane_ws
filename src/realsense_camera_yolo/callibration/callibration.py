@@ -9,9 +9,9 @@ CONTAINER_WIDTH = 0.134
 CONTAINER_HEIGHT = 0.141
 
 # Points from measurement with realsense camera
-POINT_A = np.array([0.0038, 0.013, 0.4795]) # Center of the container
-POINT_B = np.array([0.0345, 0.013, 0.48])   # Left or right of the container
-POINT_C = np.array([0.0035, -0.0861, 0.5023])   # Front or back of the container
+POINT_A = np.array([0.0038, 0.013, 0.4795])  # Center of the container
+POINT_B = np.array([0.0345, 0.013, 0.48])  # Left or right of the container
+POINT_C = np.array([0.0035, -0.0861, 0.5023])  # Front or back of the container
 ACTUAL_CABLE_LENGTH = 0.4469
 
 
@@ -25,9 +25,11 @@ def print_points():
 def vector_operations():
     """Perform vector calculations for the points."""
     vector_AB = POINT_B - POINT_A
+    print(f"Vector AB: {tuple(vector_AB)}")
     unit_vector_AB = vector_AB / np.linalg.norm(vector_AB)
 
     vector_AC = POINT_C - POINT_A
+    print(f"Vector AC: {tuple(vector_AC)}")
     unit_vector_AC = vector_AC / np.linalg.norm(vector_AC)
 
     normal_line_direction_vector = np.cross(vector_AB, vector_AC)
@@ -132,11 +134,11 @@ def draw_container(
     ax.add_collection3d(
         Poly3DCollection(
             faces,
-            facecolors=plt.get_cmap("tab20")(0),
+            facecolors=plt.get_cmap("tab20")(2),
             linewidths=1,
             edgecolors=plt.get_cmap("tab20")(2),
-            alpha=0.15,
-            label="Container",
+            alpha=0.1,
+            # label="Container",
         )
     )
 
@@ -148,7 +150,12 @@ def draw_axes(ax, origin, unit_vectors, length, axis_names, colors, label_prefix
 
     for i, axis in enumerate(axis_names):
         ax.quiver(
-            *origin, *unit_vectors[i], color=colors[i], length=length, normalize=True, alpha=0.5
+            *origin,
+            *unit_vectors[i],
+            color=colors[i],
+            length=length,
+            normalize=True,
+            alpha=0.5,
         )
         ax.text(
             *(origin + unit_vectors[i] * length),
@@ -172,12 +179,29 @@ def distance_point_to_point(point1, point2):
     return np.linalg.norm(point1 - point2)
 
 
+def get_view_angles(A, B, C, D):
+    # Calculate azimuth (angle in xy-plane)
+    azimuth = np.degrees(np.arctan2(B, A))
+
+    # Calculate elevation (angle above the xy-plane)
+    magnitude = np.sqrt(A**2 + B**2 + C**2)
+    elevation = np.degrees(np.arcsin(C / magnitude))
+
+    # Roll is set to 0 by default as it depends on additional visual preferences
+    roll = 0
+
+    return elevation, azimuth, roll
+
+
 def plot_results():
     """Plot the results of the calculations and draw the 3D plot."""
     unit_vector_AB, unit_vector_AC, unit_vector_OA, angle_between_AB_AC = (
         vector_operations()
     )
     print(f"Angle between AB and AC: {angle_between_AB_AC:.2f} degrees")
+    print(f"Unit vector AB: {tuple(unit_vector_AB)}")
+    print(f"Unit vector AC: {tuple(unit_vector_AC)}")
+    print(f"Unit vector OA: {tuple(unit_vector_OA)}")
 
     unit_vector_gravity = np.cross(unit_vector_AB, unit_vector_AC)
     unit_vector_gravity /= np.linalg.norm(unit_vector_gravity)
@@ -189,11 +213,13 @@ def plot_results():
     ):
         unit_vector_gravity = -unit_vector_gravity
 
+    print(f"Unit vector gravity: {tuple(unit_vector_gravity)}")
     point_O = POINT_A + unit_vector_gravity * ACTUAL_CABLE_LENGTH
+    print(f"Point O: {tuple(point_O)}")
 
     normal_plane_vector = unit_vector_AC
     normal_plane_A, normal_plane_B, normal_plane_C, normal_plane_D = (
-        calculate_plane_equation(normal_plane_vector, POINT_A)
+        calculate_plane_equation(normal_plane_vector, point_O)
     )
 
     point_on_line_on_plane = calculate_line_intersection(
@@ -209,14 +235,14 @@ def plot_results():
         point_O,
     )
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111, projection="3d")
 
     ax.scatter(
         0, 0, 0, color=plt.get_cmap("tab20")(6), marker="o", s=30, label="Origin LiDAR"
     )
     ax.scatter(
-        *point_O, color=plt.get_cmap("tab20")(4), marker="o", s=30, label="Pusat Troli"
+        *point_O, color=plt.get_cmap("tab20")(4), marker="o", s=30, label=r"Titik $O$"
     )
 
     # draw_axes(
@@ -231,11 +257,25 @@ def plot_results():
     #     "cym",
     # )
 
-    ax.scatter(*POINT_A, color=plt.get_cmap("tab20")(8), marker=".", label="Titik A")
-    ax.scatter(*POINT_B, color=plt.get_cmap("tab20")(10), marker=".", label="Titik B")
-    ax.scatter(*POINT_C, color=plt.get_cmap("tab20")(12), marker=".", label="Titik C")
+    ax.scatter(
+        *POINT_A, color=plt.get_cmap("tab20")(8), s=20, marker="o", label=r"Titik $A$"
+    )
+    ax.scatter(
+        *POINT_B, color=plt.get_cmap("tab20")(10), s=20, marker="o", label=r"Titik $B$"
+    )
+    ax.scatter(
+        *POINT_C, color=plt.get_cmap("tab20")(12), s=20, marker="o", label=r"Titik $C$"
+    )
 
-    ax.quiver(*POINT_A, *unit_vector_gravity, color="k", length=0.1, normalize=True, label="Vektor Arah Atas")
+    LENGTH = 0.1
+    ax.quiver(
+        *(POINT_A + point_O) / 2 - LENGTH / 2 * unit_vector_gravity,
+        *unit_vector_gravity,
+        color="k",
+        length=LENGTH,
+        normalize=True,
+        label=r"Vektor $\hat{n}$",
+    )
 
     draw_container(
         ax,
@@ -246,20 +286,21 @@ def plot_results():
         unit_vector_OA,
     )
 
-    ax.plot(
-        [POINT_A[0], 0],
-        [POINT_A[1], 0],
-        [POINT_A[2], 0],
-        color=plt.get_cmap("tab20")(14),
-        linestyle="-.",
-        label="Jarak LiDAR ke titik A",
-    )
+    # ax.plot(
+    #     [POINT_A[0], 0],
+    #     [POINT_A[1], 0],
+    #     [POINT_A[2], 0],
+    #     color=plt.get_cmap("tab20")(14),
+    #     linestyle="-.",
+    #     label="Jarak LiDAR ke titik A",
+    # )
+    text = f"Tali Gantry {distance_point_to_point(POINT_A, point_O):.4f}"
     ax.plot(
         [POINT_A[0], point_O[0]],
         [POINT_A[1], point_O[1]],
         [POINT_A[2], point_O[2]],
         color=plt.get_cmap("tab20")(16),
-        label=f"Tali Gantry {distance_point_to_point(POINT_A, point_O):.4f} m",
+        label=text + r"$m$",
     )
 
     ax.set_xlabel("X")
@@ -269,14 +310,15 @@ def plot_results():
 
     _origin, _radius = set_axes_equal(ax)
 
-    x_plane = np.linspace(_origin[0] - _radius * 1.5, _origin[0] + _radius * 1.5, 10)
-    z_plane = np.linspace(_origin[2] - _radius * 1.5, _origin[2] + _radius * 1.5, 10)
+    x_plane = np.linspace(_origin[0] - _radius * 1.25, _origin[0] + _radius * 1.25, 10)
+    z_plane = np.linspace(_origin[2] - _radius * 1.25, _origin[2] + _radius * 1.25, 10)
     X_plane, Z_plane = np.meshgrid(x_plane, z_plane)
     Y_plane = (
         -normal_plane_A * X_plane - normal_plane_C * Z_plane - normal_plane_D
     ) / normal_plane_B
     Y_plane[
-        (Y_plane < _origin[1] - _radius * 1.5) | (Y_plane > _origin[1] + _radius * 1.5)
+        (Y_plane < _origin[1] - _radius * 1.25)
+        | (Y_plane > _origin[1] + _radius * 1.25)
     ] = np.nan
     ax.plot_surface(
         X_plane,
@@ -284,12 +326,21 @@ def plot_results():
         Z_plane,
         color=plt.get_cmap("tab20")(18),
         alpha=0.2,
-        label="Bidang Kerja Gantry",
+        label=r"Bidang $ XY $ model",
+        zorder=0,
     )
 
+    elev, azim, roll = get_view_angles(
+        -normal_plane_A, -normal_plane_B, -normal_plane_C, normal_plane_D
+    )
     # ax.view_init(elev=-90, azim=90, roll=0)
-    ax.view_init(elev=178, azim=150, roll=14.5)
-    plt.legend()
+    ax.view_init(elev=-170, azim=125, roll=0)
+    # ax.view_init(elev=180 + elev, azim=azim, roll=roll)
+
+    plt.legend(bbox_to_anchor=(0.9, 0.9), loc="upper left")
+    plt.tight_layout()
+    # Save the plot as a SVG file
+    plt.savefig("Hasil kalkulasi titik O dan bidang XY.svg", format="svg")
     plt.show()
 
 

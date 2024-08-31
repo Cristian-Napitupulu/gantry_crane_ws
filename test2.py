@@ -9,10 +9,10 @@ CONTAINER_WIDTH = 0.134
 CONTAINER_HEIGHT = 0.141
 
 # Points from measurement with realsense camera
-POINT_A = np.array([0.0234, -0.026, 0.4928])
-POINT_B = np.array([0.056, -0.029, 0.492])
-POINT_C = np.array([0.029, -0.131, 0.505])
-ACTUAL_CABLE_LENGTH = 0.5
+POINT_A = np.array([0.0038, 0.013, 0.4795]) # Center of the container
+POINT_B = np.array([0.0345, 0.013, 0.48])   # Left or right of the container
+POINT_C = np.array([0.0035, -0.0861, 0.5023])   # Front or back of the container
+ACTUAL_CABLE_LENGTH = 0.4469
 
 
 def print_points():
@@ -148,7 +148,7 @@ def draw_axes(ax, origin, unit_vectors, length, axis_names, colors, label_prefix
 
     for i, axis in enumerate(axis_names):
         ax.quiver(
-            *origin, *unit_vectors[i], color=colors[i], length=length, normalize=True
+            *origin, *unit_vectors[i], color=colors[i], length=length, normalize=True, alpha=0.5
         )
         ax.text(
             *(origin + unit_vectors[i] * length),
@@ -167,6 +167,7 @@ def set_axes_equal(ax):
     ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
     return origin, radius
 
+
 def distance_point_to_point(point1, point2):
     return np.linalg.norm(point1 - point2)
 
@@ -176,15 +177,18 @@ def plot_results():
     unit_vector_AB, unit_vector_AC, unit_vector_OA, angle_between_AB_AC = (
         vector_operations()
     )
+    print(f"Angle between AB and AC: {angle_between_AB_AC:.2f} degrees")
 
     unit_vector_gravity = np.cross(unit_vector_AB, unit_vector_AC)
     unit_vector_gravity /= np.linalg.norm(unit_vector_gravity)
 
     dummy_point = POINT_A + unit_vector_gravity * ACTUAL_CABLE_LENGTH
 
-    if (distance_point_to_point(dummy_point, [0, 0, 0]) > distance_point_to_point(POINT_A, [0, 0, 0])):
+    if distance_point_to_point(dummy_point, [0, 0, 0]) > distance_point_to_point(
+        POINT_A, [0, 0, 0]
+    ):
         unit_vector_gravity = -unit_vector_gravity
-    
+
     point_O = POINT_A + unit_vector_gravity * ACTUAL_CABLE_LENGTH
 
     normal_plane_vector = unit_vector_AC
@@ -207,7 +211,6 @@ def plot_results():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-
 
     ax.scatter(
         0, 0, 0, color=plt.get_cmap("tab20")(6), marker="o", s=30, label="Origin LiDAR"
@@ -232,6 +235,8 @@ def plot_results():
     ax.scatter(*POINT_B, color=plt.get_cmap("tab20")(10), marker=".", label="Titik B")
     ax.scatter(*POINT_C, color=plt.get_cmap("tab20")(12), marker=".", label="Titik C")
 
+    ax.quiver(*POINT_A, *unit_vector_gravity, color="k", length=0.1, normalize=True, label="Vektor Arah Atas")
+
     draw_container(
         ax,
         POINT_A,
@@ -241,21 +246,21 @@ def plot_results():
         unit_vector_OA,
     )
 
-    # ax.plot(
-    #     [POINT_A[0], 0],
-    #     [POINT_A[1], 0],
-    #     [POINT_A[2], 0],
-    #     color=plt.get_cmap("tab20")(14),
-    #     linestyle="-.",
-    #     label="Jarak LiDAR ke titik A",
-    # )
-    # ax.plot(
-    #     [POINT_A[0], point_O[0]],
-    #     [POINT_A[1], point_O[1]],
-    #     [POINT_A[2], point_O[2]],
-    #     color=plt.get_cmap("tab20")(16),
-    #     label="Tali Gantry",
-    # )
+    ax.plot(
+        [POINT_A[0], 0],
+        [POINT_A[1], 0],
+        [POINT_A[2], 0],
+        color=plt.get_cmap("tab20")(14),
+        linestyle="-.",
+        label="Jarak LiDAR ke titik A",
+    )
+    ax.plot(
+        [POINT_A[0], point_O[0]],
+        [POINT_A[1], point_O[1]],
+        [POINT_A[2], point_O[2]],
+        color=plt.get_cmap("tab20")(16),
+        label=f"Tali Gantry {distance_point_to_point(POINT_A, point_O):.4f} m",
+    )
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
@@ -263,7 +268,6 @@ def plot_results():
     ax.set_box_aspect([1.0, 1.0, 1.0])
 
     _origin, _radius = set_axes_equal(ax)
-    print(_origin, _radius)
 
     x_plane = np.linspace(_origin[0] - _radius * 1.5, _origin[0] + _radius * 1.5, 10)
     z_plane = np.linspace(_origin[2] - _radius * 1.5, _origin[2] + _radius * 1.5, 10)
@@ -271,64 +275,20 @@ def plot_results():
     Y_plane = (
         -normal_plane_A * X_plane - normal_plane_C * Z_plane - normal_plane_D
     ) / normal_plane_B
-    Y_plane[(Y_plane < _origin[1] - _radius * 1.5) | (Y_plane > _origin[1] + _radius * 1.5)] = (
-        np.nan
-    )
+    Y_plane[
+        (Y_plane < _origin[1] - _radius * 1.5) | (Y_plane > _origin[1] + _radius * 1.5)
+    ] = np.nan
     ax.plot_surface(
         X_plane,
         Y_plane,
         Z_plane,
         color=plt.get_cmap("tab20")(18),
-        alpha=0.3,
+        alpha=0.2,
         label="Bidang Kerja Gantry",
     )
 
-    unit_vector_O = point_O / np.linalg.norm(point_O)
-    # ax.quiver(
-    #     *[0,0,0],
-    #     *unit_vector_O,
-    #     color="k",
-    #     length=np.linalg.norm(point_O),
-    #     normalize=True,
-    #     label="Unit Vector O",
-    # )
-
-    bridge_unit_vector = np.cross(unit_vector_O, unit_vector_gravity)
-    bridge_unit_vector /= np.linalg.norm(bridge_unit_vector)
-    # ax.quiver(
-    #     *point_O,
-    #     *bridge_unit_vector,
-    #     color="k",
-    #     length=0.1,
-    #     normalize=True,
-    #     label="Unit Vector Bridge",
-    # )
-
-    bridge_origin_point = point_O + bridge_unit_vector * _radius * 1.5
-    # ax.scatter(*bridge_origin_point, color="k", marker="o", s=30, label="Bridge Origin")
-
-    bridge_end_point = point_O - bridge_unit_vector * _radius * 1.5
-    # ax.scatter(*bridge_end_point, color="k", marker="o", s=30, label="Bridge End")
-
-    ax.plot(
-        [bridge_origin_point[0], bridge_end_point[0]],
-        [bridge_origin_point[1], bridge_end_point[1]],
-        [bridge_origin_point[2], bridge_end_point[2]],
-        color="k",
-        label="Bridge",
-    )
-
-    ax.quiver(
-        *point_O,
-        *unit_vector_OA,
-        color="k",
-        length=0.1,
-        normalize=True,
-        label="Unit Vector OA",
-    )
-
-    ax.view_init(elev=-90, azim=90, roll=0)
-    # ax.view_init(elev=-175, azim=130, roll=0)
+    # ax.view_init(elev=-90, azim=90, roll=0)
+    ax.view_init(elev=178, azim=150, roll=14.5)
     plt.legend()
     plt.show()
 

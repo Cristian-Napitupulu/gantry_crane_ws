@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
 from std_msgs.msg import UInt32
+from std_msgs.msg import Int32
 
 import time
 
@@ -18,22 +19,28 @@ TROLLEY_MOTOR_VOLTAGE_TOPIC_NAME = "trolley_motor_voltage"
 HOIST_MOTOR_VOLTAGE_TOPIC_NAME = "hoist_motor_voltage"
 
 CONTROLLER_COMMAND_TOPIC_NAME = "controller_command"
+TROLLEY_MOTOR_PWM_TOPIC_NAME = "trolley_motor_PWM"
+HOIST_MOTOR_PWM_TOPIC_NAME = "hoist_motor_PWM"
 
 DEFAULT_SPIN_TIMEOUT = 0.025  # Default spin timeout in seconds
+
+MAX_TROLLEY_MOTOR_PWM = 700
+MAX_HOIST_MOTOR_PWM = 1023
 
 MAX_TROLLEY_POSITION = 1.5  # Maximum trolley position in meters
 MIN_TROLLEY_POSITION = 0.0  # Minimum trolley position in meters
 
-MAX_CABLE_LENGTH = 0.65  # Maximum cable length in meters
+MAX_CABLE_LENGTH = 0.60  # Maximum cable length in meters
 MIN_CABLE_LENGTH = 0.40  # Minimum cable length in meters
 
-MODES_TIMEOUT = 7.5  # Timeout for modes in seconds
+MODES_TIMEOUT = 10.0  # Timeout for modes in seconds
 
 HOIST_RISE_PWM = 800  # PWM for hoist motor to rise the container
-HOIST_LOWER_PWM = 800  # PWM for hoist motor to lower the container
-HOLD_HOIST_PWM = -500
+HOIST_LOWER_PWM = 700  # PWM for hoist motor to lower the container
+HOLD_HOIST_PWM = -400
 
 ROUNDING_DIGITS = 5  # Number of digits to round the values
+MOVING_AVERAGE_WINDOW_SIZE = 10  # Window size for moving average
 
 
 class GantryControlModes:
@@ -50,6 +57,34 @@ class GantryControlModes:
     PWM_BRAKE_FLAG = 0x7FF  # Brake command, flag to stop either trolley or hoist motor
 
 
+class MovingAverage:
+    def __init__(self, window_size):
+        """
+        Inisialisasi objek MovingAverage.
+        :param window_size: Ukuran jendela untuk menghitung moving average.
+        """
+        self.window_size = window_size
+        self.window = []
+        self.sum = 0
+
+    def next(self, value):
+        """
+        Menambahkan nilai baru dan menghitung moving average.
+        :param value: Nilai baru yang akan ditambahkan.
+        :return: Moving average berdasarkan jendela saat ini.
+        """
+        if len(self.window) == self.window_size:
+            # Menghapus nilai terlama dari window dan sum
+            self.sum -= self.window.pop(0)
+
+        # Menambahkan nilai baru ke window dan sum
+        self.window.append(value)
+        self.sum += value
+
+        # Mengembalikan rata-rata
+        return self.sum / len(self.window)
+
+
 class GantryCraneConnector(Node):
     def __init__(self):
         rclpy.init()
@@ -62,9 +97,17 @@ class GantryCraneConnector(Node):
         self.initialize_subscribers()
 
         # Initialize publisher
-        self.motor_pwm_publisher = self.create_publisher(
+        self.controller_command_publisher = self.create_publisher(
             UInt32, CONTROLLER_COMMAND_TOPIC_NAME, 10
         )
+
+        # self.trolley_motor_pwm_publisher = self.create_publisher(
+        #     Int32, TROLLEY_MOTOR_PWM_TOPIC_NAME, 10
+        # )
+
+        # self.hoist_motor_pwm_publisher = self.create_publisher(
+        #     Int32, HOIST_MOTOR_PWM_TOPIC_NAME, 10
+        # )
 
         self.initialize_variables()
 
@@ -159,7 +202,7 @@ class GantryCraneConnector(Node):
         self.variables_value[variable_name] = value  # Update value
 
         # Calculate first derivative
-        self.variables_first_derivative[variable_name] = round(
+        current_variables_first_derivative = round(
             self.calculate_derivative(
                 self.variables_value[variable_name],
                 self.last_variables_value[variable_name],
@@ -168,14 +211,26 @@ class GantryCraneConnector(Node):
             ROUNDING_DIGITS,
         )
 
+        self.variables_first_derivative[variable_name] = (
+            self.variables_first_derivative_moving_average[variable_name].next(
+                current_variables_first_derivative
+            )
+        )
+
         # Calculate second derivative
-        self.variables_second_derivative[variable_name] = round(
+        current_variables_second_derivative = round(
             self.calculate_derivative(
                 self.variables_first_derivative[variable_name],
                 self.last_variables_first_derivative[variable_name],
                 delta_time,
             ),
             ROUNDING_DIGITS,
+        )
+
+        self.variables_second_derivative[variable_name] = (
+            self.variables_second_derivative_moving_average[variable_name].next(
+                current_variables_second_derivative
+            )
         )
 
         # Calculate third derivative
@@ -243,6 +298,14 @@ class GantryCraneConnector(Node):
             "hoist_motor_voltage": 0.0,
         }
 
+        self.variables_first_derivative_moving_average = {
+            "trolley_position": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "cable_length": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "sway_angle": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "trolley_motor_voltage": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "hoist_motor_voltage": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+        }
+
         self.variables_second_derivative = {
             "trolley_position": None,
             "cable_length": None,
@@ -257,6 +320,14 @@ class GantryCraneConnector(Node):
             "sway_angle": 0.0,
             "trolley_motor_voltage": 0.0,
             "hoist_motor_voltage": 0.0,
+        }
+
+        self.variables_second_derivative_moving_average = {
+            "trolley_position": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "cable_length": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "sway_angle": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "trolley_motor_voltage": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
+            "hoist_motor_voltage": MovingAverage(MOVING_AVERAGE_WINDOW_SIZE),
         }
 
         self.variables_third_derivative = {
@@ -332,22 +403,36 @@ class GantryCraneConnector(Node):
     def publish_command(
         self, gantry_mode, input_pwm_trolley_motor, input_pwm_hoist_motor
     ):
-        self.control_pwm["trolley_motor"] = input_pwm_trolley_motor
-        self.control_pwm["hoist_motor"] = input_pwm_hoist_motor
+        self.control_pwm["trolley_motor"] = max(
+            min(input_pwm_trolley_motor, MAX_TROLLEY_MOTOR_PWM), -MAX_TROLLEY_MOTOR_PWM
+        )
+        self.control_pwm["hoist_motor"] = max(
+            min(input_pwm_hoist_motor, MAX_HOIST_MOTOR_PWM), -MAX_HOIST_MOTOR_PWM
+        )
 
         # message = ControllerCommandMessage()
         # message.mode = gantry_mode
         # message.trolley_motor_pwm = self.control_pwm["trolley_motor"]
         # message.hoist_motor_pwm = self.control_pwm["hoist_motor"]
 
-        message = UInt32()
-        message.data = self.packValues(
+        controller_command_message = UInt32()
+        controller_command_message.data = self.packValues(
             gantry_mode,
             self.control_pwm["trolley_motor"],
             self.control_pwm["hoist_motor"],
         )
 
-        self.motor_pwm_publisher.publish(message)
+        self.controller_command_publisher.publish(controller_command_message)
+
+        # trolley_motor_pwm_message = Int32()
+        # trolley_motor_pwm_message.data = int(self.control_pwm["trolley_motor"])
+
+        # hoist_motor_pwm_message = Int32()
+        # hoist_motor_pwm_message.data = int(self.control_pwm["hoist_motor"])
+
+        # self.trolley_motor_pwm_publisher.publish(trolley_motor_pwm_message)
+
+        # self.hoist_motor_pwm_publisher.publish(hoist_motor_pwm_message)
         self.update()
 
     def packValues(
@@ -370,9 +455,13 @@ class GantryCraneConnector(Node):
         pwm_hoist_motor = int(pwm_hoist_motor)
 
         if trolley_motor_pwm != GantryControlModes.PWM_BRAKE_FLAG:
-            trolley_motor_pwm = max(min(trolley_motor_pwm, 1023), -1023)
+            trolley_motor_pwm = max(
+                min(trolley_motor_pwm, MAX_TROLLEY_MOTOR_PWM), -MAX_TROLLEY_MOTOR_PWM
+            )
         if pwm_hoist_motor != GantryControlModes.PWM_BRAKE_FLAG:
-            pwm_hoist_motor = max(min(pwm_hoist_motor, 1023), -1023)
+            pwm_hoist_motor = max(
+                min(pwm_hoist_motor, MAX_HOIST_MOTOR_PWM), -MAX_HOIST_MOTOR_PWM
+            )
 
         # Convert negative values to two's complement representation
         if trolley_motor_pwm < 0:
@@ -397,7 +486,7 @@ class GantryCraneConnector(Node):
 
         return True
 
-    def begin(self, slide_to_position="origin", hoist_to_position="top"):
+    def begin(self, slide_to_position="origin", hoist_to_position="middle"):
         self.get_logger().info("Beginning gantry crane connector...")
         self.wait_for_messages()
         self.wait_for_subscribers()
@@ -436,7 +525,7 @@ class GantryCraneConnector(Node):
 
     def wait_for_subscribers(self):
         self.get_logger().info("Waiting for subscribers...")
-        while self.motor_pwm_publisher.get_subscription_count() == 0:
+        while self.controller_command_publisher.get_subscription_count() == 0:
             self.update()
         self.get_logger().info("All subscribers ready")
 
@@ -562,17 +651,25 @@ class GantryCraneConnector(Node):
             "Hoisting container to top... (" + str(MIN_CABLE_LENGTH) + " m)"
         )
         start_time = time.time()
+        sum_error = 0
         while (
             abs(self.variables_value["cable_length"] - MIN_CABLE_LENGTH) > 0.001
             or time.time() - start_time < MODES_TIMEOUT
         ):
             error = self.variables_value["cable_length"] - MIN_CABLE_LENGTH
-            if error < 0:
-                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            elif error > 0:
-                hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+
+            if time.time() - start_time > 2.0:
+                sum_error += error
+            if error > 0:
+                hoist_pwm = -HOIST_RISE_PWM * np.sign(error) - 20 * sum_error
+            elif error < 0:
+                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error) - 20 * sum_error
             else:
                 hoist_pwm = 0
+
+            hoist_pwm = int(
+                max(min(hoist_pwm, MAX_HOIST_MOTOR_PWM), -MAX_HOIST_MOTOR_PWM)
+            )
 
             self.get_logger().debug(
                 "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
@@ -596,6 +693,7 @@ class GantryCraneConnector(Node):
             + " m)"
         )
         start_time = time.time()
+        sum_error = 0
         while (
             abs(
                 self.variables_value["cable_length"]
@@ -608,15 +706,27 @@ class GantryCraneConnector(Node):
                 self.variables_value["cable_length"]
                 - (MAX_CABLE_LENGTH + MIN_CABLE_LENGTH) / 2
             )
-            if error < 0:
-                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            elif error > 0:
-                hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+
+            if time.time() - start_time > 2.0:
+                sum_error += error
+            if error > 0:
+                hoist_pwm = -HOIST_RISE_PWM * np.sign(error) - 20 * sum_error
+            elif error < 0:
+                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error) - 20 * sum_error
             else:
                 hoist_pwm = 0
 
+            hoist_pwm = int(
+                max(min(hoist_pwm, MAX_HOIST_MOTOR_PWM), -MAX_HOIST_MOTOR_PWM)
+            )
+
             self.get_logger().debug(
-                "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)
+                "Error : "
+                + str(error)
+                + " m. PWM : "
+                + str(hoist_pwm)
+                + " sum_error: "
+                + str(sum_error)
             )
             self.publish_command(GantryControlModes.CONTROL_MODE, 0, hoist_pwm)
 
@@ -634,17 +744,25 @@ class GantryCraneConnector(Node):
             "Hoisting container to bottom... (" + str(MAX_CABLE_LENGTH) + " m)"
         )
         start_time = time.time()
+        sum_error = 0
         while (
             abs(self.variables_value["cable_length"] - MAX_CABLE_LENGTH) > 0.001
             or time.time() - start_time < MODES_TIMEOUT
         ):
             error = self.variables_value["cable_length"] - MAX_CABLE_LENGTH
-            if error < 0:
-                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error)
-            elif error > 0:
-                hoist_pwm = -HOIST_RISE_PWM * np.sign(error)
+
+            if time.time() - start_time > 2.0:
+                sum_error += error
+            if error > 0:
+                hoist_pwm = -HOIST_RISE_PWM * np.sign(error) - 20 * sum_error
+            elif error < 0:
+                hoist_pwm = -HOIST_LOWER_PWM * np.sign(error) - 20 * sum_error
             else:
                 hoist_pwm = 0
+
+            hoist_pwm = int(
+                max(min(hoist_pwm, MAX_HOIST_MOTOR_PWM), -MAX_HOIST_MOTOR_PWM)
+            )
 
             self.get_logger().debug(
                 "Error : " + str(error) + " m. PWM : " + str(hoist_pwm)

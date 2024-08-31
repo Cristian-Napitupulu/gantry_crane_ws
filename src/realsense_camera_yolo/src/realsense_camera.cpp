@@ -363,7 +363,7 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
 
     int execution_time = executionTime.getMovingAverage();
     // Print cable length and sway angle for debugging
-    RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle, execution_time);
+    RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle_, execution_time);
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)

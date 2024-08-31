@@ -13,10 +13,12 @@ import time
 CONTAINER_RATIO = 15 / 33.5
 YOLO_ONLY_MODE = True
 
+
 class ResultID:
     NoResult = 0
     YOLOResult = 1
     CornerResult = 2
+
 
 # Create a moving average class to smooth out the bounding box coordinates
 class MovingAverage(np.ndarray):
@@ -135,7 +137,8 @@ class RealSenseYOLOServer(Node):
                 )
                 cv2.circle(imgres, center, 3, (0, 165, 255), thickness=cv2.FILLED)
 
-            cv2.imshow("Image", imgres)
+            cv2.namedWindow("Hasil Deteksi Kontainer dengan LiDAR & YOLOv8" , 16)
+            cv2.imshow("Hasil Deteksi Kontainer dengan LiDAR & YOLOv8", imgres)
 
             cv2.waitKey(1)
 

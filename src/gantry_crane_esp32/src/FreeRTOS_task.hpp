@@ -30,8 +30,12 @@ void spinMicroROS(void *parameter)
 
         RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
         RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
-        RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
-        RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+
+        if (PUBLISH_VOLTAGE)
+        {
+            RCSOFTCHECK(rclc_executor_spin_some(&trolleyMotorVoltageExecutor, RCL_MS_TO_NS(TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+            RCSOFTCHECK(rclc_executor_spin_some(&hoistMotorVoltageExecutor, RCL_MS_TO_NS(HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS)));
+        }
 
         microROSinitialized = true;
     }
@@ -44,7 +48,7 @@ void findOrigin(void *parameter)
     trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
     while (limitSwitchEncoderSideState == false)
     {
-        if (millis() - findOrigin_time > 100)
+        if (millis() - findOrigin_time > 50)
         {
             if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
             {
@@ -53,7 +57,7 @@ void findOrigin(void *parameter)
 
             else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
             {
-                trolleyMotorPWM += 1;
+                trolleyMotorPWM += 2;
             }
 
             findOrigin_time = millis();
@@ -107,6 +111,7 @@ void controllerCommandTask(void *parameter)
     for (;;)
     {
         ledBuiltIn.blink(300);
+        Serial.println("");
 
         // Brake gantry
         if (brakeTrolleyMotor)
@@ -250,8 +255,11 @@ void controllerCommandTask(void *parameter)
         trolleyMotor.setPWM(trolleyMotorPWM);
         hoistMotor.setPWM(hoistMotorPWM);
 
-        trolleyMotorVoltage = readChannel(ADS1115_COMP_0_GND);
-        hoistMotorVoltage = readChannel(ADS1115_COMP_1_GND);
+        if (PUBLISH_VOLTAGE)
+        {
+            trolleyMotorVoltage = readChannel(ADS1115_COMP_0_GND);
+            hoistMotorVoltage = readChannel(ADS1115_COMP_1_GND);
+        }
     }
 }
 

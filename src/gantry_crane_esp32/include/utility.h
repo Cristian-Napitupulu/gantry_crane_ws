@@ -29,6 +29,24 @@ void unpackValues(uint32_t packedValue, int8_t &gantry_mode, int16_t &pwm_trolle
     {
       pwm_hoist = pwm_hoist - 0xFFF - 1;
     }
+
+    if (pwm_trolley > 1023)
+    {
+      pwm_trolley = 1023;
+    }
+    else if (pwm_trolley < -1023)
+    {
+      pwm_trolley = -1023;
+    }
+
+    if (pwm_hoist > 1023)
+    {
+      pwm_hoist = 1023;
+    }
+    else if (pwm_hoist < -1023)
+    {
+      pwm_hoist = -1023;
+    }
   }
 }
 

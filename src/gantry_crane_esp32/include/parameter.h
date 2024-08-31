@@ -17,23 +17,25 @@
 
 // micro-ROS executor timeout
 // trolley position publisher
-#define POSITION_PUBLISH_PERIOD_MS 3
-#define POSITION_PUBLISH_TIMEOUT_MS 10
+#define POSITION_PUBLISH_PERIOD_MS 10
+#define POSITION_PUBLISH_TIMEOUT_MS 20
 
-// limit switch publisher
-#define LIMIT_SWITCH_PUBLISH_PERIOD_MS 3
-#define LIMIT_SWITCH_PUBLISH_TIMEOUT_MS 10
+// // limit switch publisher
+// #define LIMIT_SWITCH_PUBLISH_PERIOD_MS 3
+// #define LIMIT_SWITCH_PUBLISH_TIMEOUT_MS 10
+
+#define PUBLISH_VOLTAGE 0   // 1 to publish, 0 to not publish
 
 // trolley motor voltage publisher
-#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 3
-#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
+#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 10
+#define TROLLEY_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 20
 
 // hoist motor voltage publisher
-#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 3
-#define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 10
+#define HOIST_MOTOR_VOLTAGE_PUBLISH_PERIOD_MS 10
+#define HOIST_MOTOR_VOLTAGE_PUBLISH_TIMEOUT_MS 20
 
 // Controller Command subscriber
-#define CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS 10
+#define CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS 20
 
 // Timeout for controller command
 #define CONTROLLER_COMMAND_TIMEOUT_MS 500
@@ -48,18 +50,18 @@
 * Used for protection 
 */
 
-#define TROLLEY_MAX_SPEED 0.3   // m/s
+#define TROLLEY_MAX_SPEED 0.35   // m/s
 
 // Operating PWM values for trolley motor`
-#define TROLLEY_MOTOR_PWM_MAX 800
+#define TROLLEY_MOTOR_PWM_MAX 1023
 #define TROLLEY_MOTOR_PWM_MIN 0
 
 // Operating PWM values for hoist motor
 #define HOIST_MOTOR_PWM_MAX 1023
 #define HOIST_MOTOR_PWM_MIN 0
 
-#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 650
-#define HOLD_HOIST_MOTOR_PWM -200
+#define TROLLEY_MOTOR_FIND_ORIGIN_PWM 700
+// #define HOLD_HOIST_MOTOR_PWM -200
 
 // Encoder
 // Got from measurement

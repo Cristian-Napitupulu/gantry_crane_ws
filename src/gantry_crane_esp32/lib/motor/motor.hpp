@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define PWM_FREQUENCY 5000
+#define PWM_FREQUENCY 10000
 #define PWM_RESOLUTION 10
 
 class Motor {

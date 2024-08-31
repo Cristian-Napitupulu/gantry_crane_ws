@@ -9,46 +9,48 @@
 
 void setup()
 {
-  // Initialize notification LED
-  ledBuiltIn.begin();
-  ledBuiltIn.turnOn();
+    // Initialize notification LED
+    ledBuiltIn.begin();
+    ledBuiltIn.turnOn();
 
-  // Initialize motor
-  trolleyMotor.begin();
-  hoistMotor.begin();
+    // Initialize motor
+    trolleyMotor.begin();
+    hoistMotor.begin();
 
-  // Initialize encoder
-  encoderTrolley.begin();
-  attachInterrupt(encoderTrolley.getChannelA(), encoderTrolleyCallback, CHANGE);
+    // Initialize encoder
+    encoderTrolley.begin();
+    attachInterrupt(encoderTrolley.getChannelA(), encoderTrolleyCallback, CHANGE);
 
-  // Initialize limit switches
-  limitSwitchEncoderSide.begin();
-  limitSwitchTrolleyMotorSide.begin();
+    // Initialize limit switches
+    limitSwitchEncoderSide.begin();
+    limitSwitchTrolleyMotorSide.begin();
 
-  // Initialize ADC
-  analogToDigitalConverterInit();
+    // Initialize ADC
+    if (PUBLISH_VOLTAGE)
+    {
+        analogToDigitalConverterInit();
+    }
+    delay(1000);
 
-  delay(1000);
+    xTaskCreatePinnedToCore(
+        spinMicroROS,
+        "microROS spin task",
+        40000,
+        NULL,
+        1 | portPRIVILEGE_BIT,
+        &spinMicroROSTaskHandle,
+        0);
 
-  xTaskCreatePinnedToCore(
-      spinMicroROS,
-      "microROS spin task",
-      40000,
-      NULL,
-      1,
-      &spinMicroROSTaskHandle,
-      0);
+    delay(1000);
 
-  delay(1000);
-
-  xTaskCreatePinnedToCore(
-      controllerCommandTask,
-      "Controller command task",
-      20000,
-      NULL,
-      1,
-      &controllerCommandTaskHandle,
-      1);
+    xTaskCreatePinnedToCore(
+        controllerCommandTask,
+        "Controller command task",
+        30000,
+        NULL,
+        1 | portPRIVILEGE_BIT,
+        &controllerCommandTaskHandle,
+        1);
 }
 void loop()
 {

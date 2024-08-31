@@ -137,10 +137,9 @@ class GantryCraneModel:
             * np.sin(self.gantry_crane_object.variables_value["sway_angle"])
             / self.Kt2
         )
-        self.matrix_A[
-            1, 1
-        ] = self.L2 * self.mc * self.rp2 / self.Kt2 + self.J2 * self.L2 / (
-            self.Kt2 * self.rp2
+        self.matrix_A[1, 1] = (
+            self.L2 * self.mc * self.rp2 / self.Kt2
+            + self.J2 * self.L2 / (self.Kt2 * self.rp2)
         )
 
     def update_matrix_B(self):
@@ -313,6 +312,27 @@ class GantryCraneModel:
         self.update_matrix_F()
 
 
+# def saturation(surface, boundary_thickness):
+#     saturation = np.zeros(surface.shape)
+#     for i in range(surface.shape[0]):
+#         for j in range(surface.shape[1]):
+#             if surface[i, j] / boundary_thickness > 1:
+#                 saturation[i, j] = 1
+#             elif surface[i, j] / boundary_thickness < -1:
+#                 saturation[i, j] = -1
+#             else:
+#                 saturation[i, j] = surface[i, j] / boundary_thickness
+
+
+def saturation(sliding_surface, boundary_thickness):
+    if sliding_surface / boundary_thickness > 1:
+        return 1
+    elif sliding_surface / boundary_thickness < -1:
+        return -1
+    else:
+        return sliding_surface / boundary_thickness
+
+
 class Controller:
     def __init__(self, controller_name, parameter_path):
         self.name = controller_name
@@ -403,7 +423,7 @@ class Controller:
         #         stateVector[1, 0],
         #     )
         # )
-        
+
         stateVectorFirstDerivative = np.matrix(
             [
                 [
@@ -439,7 +459,7 @@ class Controller:
         slidingSurface = (
             np.matmul(self.matrix_alpha, stateVector - desiredStateVector)
             + np.matmul(self.matrix_beta, stateVectorFirstDerivative)
-            + stateVectorSecondDerivative /100000
+            + stateVectorSecondDerivative
             + self.matrix_lambda
             * self.gantry_crane_object.variables_value["sway_angle"]
         )
@@ -472,8 +492,14 @@ class Controller:
         )
 
         # Simplified control
-        control_now = control_now - np.multiply(
-            self.matrix_k, np.sign(np.multiply(self.matrix_gamma, slidingSurface))
+        # control_now = control_now - np.multiply(
+        #     self.matrix_k, saturation(slidingSurface, 0.05)
+        # )
+        control_now[0, 0] = control_now[0, 0] - self.matrix_k[0, 0] * saturation(
+            slidingSurface[0, 0], 0.05
+        )
+        control_now[1, 0] = control_now[1, 0] - self.matrix_k[1, 0] * saturation(
+            slidingSurface[1, 0], 0.05
         )
 
         # print("Control now: {}, {}.".format(control_now[0, 0], control_now[1, 0]))
@@ -525,7 +551,7 @@ class Controller:
 
     def linear_interpolation(self, x, x1, y1, x2, y2):
         return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-    
+
     def get_control_pwm(self, desired_trolley_position, desired_cable_length=None):
         trolley_control_input, hoist_control_input = self.get_control_signal(
             desired_trolley_position, desired_cable_length
@@ -533,6 +559,9 @@ class Controller:
         trolley_pwm, hoist_pwm = self.convert_to_pwm(
             trolley_control_input, hoist_control_input
         )
+
+        trolley_pwm = max(min(trolley_pwm, 1023), -1023)
+        hoist_pwm = max(min(hoist_pwm, 1023), -1023)
         return trolley_pwm, hoist_pwm
 
 

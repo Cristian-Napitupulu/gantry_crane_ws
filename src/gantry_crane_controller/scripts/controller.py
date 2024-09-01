@@ -27,13 +27,16 @@ LOG_FOLDER_PATH = (
 gantry_crane_logger = Logger(LOG_FOLDER_PATH)
 
 gantry_crane_model = non_linear_motor_model  # Change this to change the model
-gantry_crane_controller = sliding_mode_controller  # Change this to change the controller
+gantry_crane_controller = (
+    sliding_mode_controller  # Change this to change the controller
+)
 
 PLAY_DURATION = 30.0
 MAX_ERROR_TROLLEY_POSITION = 0.005
 MAX_ERROR_CABLE_LENGTH = 0.01
 
 current_time = time.time()
+
 
 def send_command_and_collect_data(
     mode=GantryControlModes.IDLE_MODE, trolley_pwm=0, hoist_pwm=0
@@ -56,6 +59,12 @@ def send_command_and_collect_data(
     utility.collect_data(
         gantry_crane_logger, gantry_crane_connector, gantry_crane_controller
     )
+
+
+def wait(duration=5.0):
+    start_time = time.time()
+    while time.time() - start_time < duration:
+        send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
 
 
 def sweep_trolley_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0):
@@ -421,7 +430,7 @@ if __name__ == "__main__":
 
     # Initialize gantry crane
     gantry_crane_connector.begin(hoist_to_position="bottom")
-    time.sleep(10.0)
+    time.sleep(15.0)
     try:
         """
         The following code block is used to test the gantry crane's motors.
@@ -515,6 +524,11 @@ if __name__ == "__main__":
         #         )
         #         utility.create_plot(gantry_crane_logger)
 
+        gantry_crane_logger.reset_buffers()
+        gantry_crane_logger.reset_timer()
+
+        wait(5.0)
+
         """
         The following code block is used to control the gantry crane to move to three different positions.
         """
@@ -528,7 +542,7 @@ if __name__ == "__main__":
         )
         print("Target first position. Result: {}".format(result))
 
-        time.sleep(10.0)  # Wait for 5 seconds
+        wait(5.0)
 
         # Control gantry crane to second position
         result = control_gantry_crane(
@@ -540,7 +554,7 @@ if __name__ == "__main__":
         )
         print("Target second position. Result: {}".format(result))
 
-        # time.sleep(10.0)  # Wait for 5 seconds
+        wait(5.0)
 
         # # Control gantry crane to third position
         # result = control_gantry_crane(
@@ -553,7 +567,7 @@ if __name__ == "__main__":
         # print("Target third position. Result: {}".format(result))
 
         gantry_crane_logger.write_buffers_to_excel(
-            gantry_crane_controller.get_name() + "_control_gantry_crane_data_dark.xlsx"
+            gantry_crane_controller.get_name() + "_control_gantry_crane_data_light.xlsx"
         )
 
     except KeyboardInterrupt:

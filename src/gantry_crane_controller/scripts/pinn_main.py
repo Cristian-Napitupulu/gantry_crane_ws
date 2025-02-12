@@ -13,6 +13,8 @@ from sliding_mode_controller import non_linear_motor_model, sliding_mode_control
 
 from pinn_controller import pinn_controller
 
+from pid_control_for_comparasion import pid_controller
+
 import random
 import time
 
@@ -27,13 +29,11 @@ LOG_FOLDER_PATH = (
 gantry_crane_logger = Logger(LOG_FOLDER_PATH)
 
 gantry_crane_model = non_linear_motor_model  # Change this to change the model
-gantry_crane_controller = (
-    sliding_mode_controller  # Change this to change the controller
-)
+gantry_crane_controller = pinn_controller  # Change this to change the controller
 
-PLAY_DURATION = 30.0
-MAX_ERROR_TROLLEY_POSITION = 0.005
-MAX_ERROR_CABLE_LENGTH = 0.01
+PLAY_DURATION = 20
+MAX_ERROR_TROLLEY_POSITION = 0.01
+MAX_ERROR_CABLE_LENGTH = 0.05
 
 current_time = time.time()
 
@@ -41,9 +41,8 @@ current_time = time.time()
 def send_command_and_collect_data(
     mode=GantryControlModes.IDLE_MODE, trolley_pwm=0, hoist_pwm=0
 ):
-    # Print for debugging every 200 ms
     global current_time
-    if (time.time() - current_time) * 1000 > 200:
+    if (time.time() - current_time) * 1000 > 500:
         # Print current PWM
         print(
             "Collecting data... Current PWM: trolley: {}, hoist: {}".format(
@@ -59,12 +58,6 @@ def send_command_and_collect_data(
     utility.collect_data(
         gantry_crane_logger, gantry_crane_connector, gantry_crane_controller
     )
-
-
-def wait(duration=5.0):
-    start_time = time.time()
-    while time.time() - start_time < duration:
-        send_command_and_collect_data(GantryControlModes.IDLE_MODE, 0, 0)
 
 
 def sweep_trolley_motor_pwm(pwm_range=[0, 1023], increment=25, timeout_sec=5.0):
@@ -365,6 +358,8 @@ def control_gantry_crane(
                 abs(
                     gantry_crane_connector.variables_value["cable_length"]
                     - desired_cable_length
+                    if desired_cable_length is not None
+                    else 0.0
                 ),
             )
             break
@@ -429,12 +424,30 @@ if __name__ == "__main__":
     print("Controller initialized: {}".format(gantry_crane_controller.get_name()))
 
     # Initialize gantry crane
-    gantry_crane_connector.begin(hoist_to_position="bottom")
-    time.sleep(15.0)
+    gantry_crane_connector.begin()
+    time.sleep(5.0)
     try:
         """
         The following code block is used to test the gantry crane's motors.
         """
+        # timer_test_damping = time.time()   
+        # while time.time() - timer_test_damping < 0.5:
+        #     send_command_and_collect_data(
+        #     GantryControlModes.CONTROL_MODE, 800, 0.0
+        # )
+        # send_command_and_collect_data(
+        #         GantryControlModes.CONTROL_MODE, 0.0, 0.0
+        #     )
+        # timer_test_damping = time.time()
+        # sample_time = time.time()
+        # while time.time() - timer_test_damping < 120:
+        #     if time.time() - sample_time > 0.05:
+        #         sample_time = time.time()
+        #         send_command_and_collect_data(
+        #         GantryControlModes.CONTROL_MODE, 0.0, 0.0
+        #     )
+        
+            
 
         # """ 1. Sweep trolley motor PWM """
         # for i in range(NUM_REPEAT):
@@ -442,7 +455,7 @@ if __name__ == "__main__":
         #     time.sleep(10.0)
         #     gantry_crane_logger.reset_buffers()
         #     gantry_crane_logger.reset_timer()
-        #     sweep_trolley_motor_pwm(pwm_range=[0, 451], increment=25, timeout_sec=10.0)
+        #     sweep_trolley_motor_pwm(pwm_range=[0, 751], increment=25, timeout_sec=0.3)
         #     gantry_crane_logger.write_buffers_to_excel(
         #         "trolley_motor_sweep_response.xlsx"
         #     )
@@ -469,7 +482,7 @@ if __name__ == "__main__":
         #     time.sleep(10.0)
         #     gantry_crane_logger.reset_buffers()
         #     gantry_crane_logger.reset_timer()
-        #     sweep_hoist_motor_pwm(pwm_range=[-700, -901], increment=-40, timeout_sec=7.5)
+        #     sweep_hoist_motor_pwm(pwm_range=[0, -501], increment=-10, timeout_sec=0.3)
         #     gantry_crane_connector.brake()
         #     gantry_crane_logger.write_buffers_to_excel(
         #         "hoist_motor_shrink_sweep_response.xlsx"
@@ -524,51 +537,54 @@ if __name__ == "__main__":
         #         )
         #         utility.create_plot(gantry_crane_logger)
 
-        gantry_crane_logger.reset_buffers()
-        gantry_crane_logger.reset_timer()
-
-        wait(5.0)
-
         """
         The following code block is used to control the gantry crane to move to three different positions.
         """
         # Control gantry crane to first position
         result = control_gantry_crane(
             timeout_sec=PLAY_DURATION,
-            desired_trolley_position=1.0,
-            desired_cable_length=0.4,
+            desired_trolley_position=0.75,
+            desired_cable_length=0.55,
             max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
             max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
         )
         print("Target first position. Result: {}".format(result))
 
-        wait(5.0)
+        # time.sleep(5.0)  # Wait for 5 seconds
 
         # Control gantry crane to second position
         result = control_gantry_crane(
             timeout_sec=PLAY_DURATION,
-            desired_trolley_position=0.25,
-            desired_cable_length=0.5,
+            desired_trolley_position=0.35,
+            desired_cable_length=0.45,
             max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
             max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
         )
         print("Target second position. Result: {}".format(result))
 
-        wait(5.0)
+        # time.sleep(5.0)  # Wait for 5 seconds
 
-        # # Control gantry crane to third position
-        # result = control_gantry_crane(
-        #     timeout_sec=PLAY_DURATION,
-        #     desired_trolley_position=1.1,
-        #     desired_cable_length=0.4,
-        #     max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
-        #     max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
-        # )
-        # print("Target third position. Result: {}".format(result))
+        # Control gantry crane to third position
+        result = control_gantry_crane(
+            timeout_sec=PLAY_DURATION,
+            desired_trolley_position=1.1,
+            desired_cable_length=0.4,
+            max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
+            max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
+        )
+        print("Target third position. Result: {}".format(result))
+        current_time = time.time()
+        while (time.time() - current_time) < 10:
+            gantry_crane_connector.update()
+            utility.collect_data(
+            gantry_crane_logger, gantry_crane_connector, gantry_crane_controller
+            )
+            time.sleep(0.01)
 
-        # gantry_crane_logger.write_buffers_to_excel(
-        #     gantry_crane_controller.get_name() + "_control_gantry_crane_data_light.xlsx"
-        # )
+        gantry_crane_logger.write_buffers_to_excel(
+            gantry_crane_controller.get_name() + "35-75-110.xlsx"
+        )
+        utility.create_plot(gantry_crane_logger)
 
     except KeyboardInterrupt:
         pass

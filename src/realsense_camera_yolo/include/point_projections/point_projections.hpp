@@ -80,20 +80,30 @@ double pointProjections::getAngle(double x, double y, double z)
 
     // double angle = atan2(vectorX, vectorZ);
     double dotProduct = vectorX*a_ + vectorY*b_ + vectorZ*c_;
-    double angle = acos(dotProduct / (sqrt(vectorX*vectorX + vectorY*vectorY + vectorZ*vectorZ)*sqrt(a_*a_ + b_*b_ + c_*c_)));
-    
-    if (vectorX < 0)
+    double angle = acos(-dotProduct / (sqrt(vectorX*vectorX + vectorY*vectorY + vectorZ*vectorZ)*sqrt(a_*a_ + b_*b_ + c_*c_)));
+
+    double crossProductX = b_*vectorZ - c_*vectorY;
+    double crossProductY = c_*vectorX - a_*vectorZ;
+    double crossProductZ = a_*vectorY - b_*vectorX;
+
+    double dotProductCross = crossProductX*normalPlaneUnitVectorX + crossProductY*normalPlaneUnitVectorY + crossProductZ*normalPlaneUnitVectorZ;
+
+    int sign = 1;
+    if (dotProductCross < 0)
     {
-        angle = -angle;
+        sign = -1;
     }
-    if (angle > M_PI / 2)
-    {
-        angle = M_PI - angle;
-    }
-    else if (angle < -M_PI / 2)
-    {
-        angle = -M_PI - angle;
-    }
+
+    angle = sign*angle;
+
+    // if (angle > M_PI / 2)
+    // {
+    //     angle = M_PI - angle;
+    // }
+    // else if (angle < -M_PI / 2)
+    // {
+    //     angle = -M_PI - angle;
+    // }
 
     return angle;
 }

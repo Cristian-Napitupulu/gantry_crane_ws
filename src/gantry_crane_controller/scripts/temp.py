@@ -120,7 +120,7 @@ def fuzzytype2(u, e, tet, u0=575, mode="trolley"):
 
     domain3 = linspace(0.0, 1.0, 100)
     # Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.004, 0.001, 1.])
-    Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.01, 0.001, 1.0])
+    Z3 = IT2FS_Gaussian_UncertStd(domain3, [0, 0.004, 0.001, 1.0])
     B3 = IT2FS_Gaussian_UncertStd(domain3, [1, 0.5, 0.1, 1.0])
 
     myIT2FLS = TSK(product_t_norm, max_s_norm)
@@ -159,10 +159,6 @@ def fuzzytype2(u, e, tet, u0=575, mode="trolley"):
     return res["un"]
 
 
-def linear_interpolation(x, x1, y1, x2, y2):
-    return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-
-
 class Controller:
     def __init__(self, controller_name, parameter_path=None):
         self.name = controller_name
@@ -191,7 +187,7 @@ class Controller:
             with open(parameter_json_path, "r") as file:
                 parameters = json.load(file)
         self.Kpx = 10  # 7.36  # 9.89
-        self.Kdx = 4.4862  # 5.01  # 2.87
+        self.Kdx = 4.486  # 5.01  # 2.87
         self.Kpl = 0  # 14.18  # 10
         self.Kdl = 0  # 8.98  # 3.13
 
@@ -275,11 +271,6 @@ class Controller:
         pwm_hoist = np.sign(hoist_control_input) * ufuzzl
         if abs(pwm_hoist) < 220:
             pwm_hoist = -200
-        # pwm_trolley = int(linear_interpolation(abs(trolley_control_input), 0, 0, 3, 930))
-        # pwm_trolley = np.sign(trolley_control_input) * pwm_trolley
-        # ux0=870
-        # if abs(pwm_trolley)<ux0:
-        #     pwm_trolley= np.sign(pwm_trolley) * ux0
 
         # if abs(self.el)<0.02:
         #     pwm_hoist=-200

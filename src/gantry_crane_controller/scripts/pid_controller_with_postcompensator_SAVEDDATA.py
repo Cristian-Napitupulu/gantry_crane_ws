@@ -699,9 +699,9 @@ if __name__ == "__main__":
         #     (
         #         trolley_motor_control_input,
         #         hoist_motor_control_input,
-        #     ) = gantry_crane_controller.get_control_signal(
+        #     ) = gantry_crane_controller.get_control_signal(ros2 topic echo /trolley_position
         #         DESIRED_TROLLEY_POSITION, DESIRED_CABLE_LENGTH
-        #     )
+        #     )ros2 topic echo /trolley_position
 
         #     trolley_motor_pwm, hoist_motor_pwm = gantry_crane_controller.convert_to_pwm(
         #         trolley_motor_control_input, hoist_motor_control_input

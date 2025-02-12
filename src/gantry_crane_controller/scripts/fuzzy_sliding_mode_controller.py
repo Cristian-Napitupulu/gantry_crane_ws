@@ -720,7 +720,7 @@ if __name__ == "__main__":
             # hoist_motor_pwm = slidingModeController.convert_to_pwm(hoist_motor_control_input)
             gantryMode = CONTROL_MODE
             #Nilai pwm kecepatan trolley 0 674-675
-            t_pwm=620
+            t_pwm=850
             sp_pos=0.2
             if gantry_crane.variables_value["trolley_position"] <sp_pos:
                 trolley_motor_pwm = t_pwm
@@ -736,7 +736,7 @@ if __name__ == "__main__":
             else:
                 hoist_motor_pwm = 0
             hoist_motor_pwm = hoist_motor_pwm
-            trolley_motor_pwm = 0#trolley_motor_pwm
+            trolley_motor_pwm = trolley_motor_pwm
             
 
             slidingModeController.publish_motor_pwm(

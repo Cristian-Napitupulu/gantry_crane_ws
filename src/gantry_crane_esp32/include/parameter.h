@@ -40,6 +40,12 @@
 // Timeout for controller command
 #define CONTROLLER_COMMAND_TIMEOUT_MS 500
 
+// Sampling period for controller
+#define CONTROLLER_SAMPLING_TIME_MS 10
+
+// Brake command timeout
+#define BRAKE_COMMAND_TIMEOUT_MS 200
+
 /*Minimum and maximum PWM values
 * Minimum PWM value is the value when the motor is barely moving (dead zone)
 * All values (absolute) below the minimum PWM value but above 0 will be set to minimum PWM value accordingly
@@ -50,7 +56,7 @@
 * Used for protection 
 */
 
-#define TROLLEY_MAX_SPEED 0.35   // m/s
+#define TROLLEY_MAX_SPEED 0.3   // m/s
 
 // Operating PWM values for trolley motor`
 #define TROLLEY_MOTOR_PWM_MAX 1023

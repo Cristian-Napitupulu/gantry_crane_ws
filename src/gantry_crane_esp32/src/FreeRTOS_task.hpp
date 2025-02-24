@@ -10,23 +10,22 @@
 #include "ADC.hpp"
 
 bool microROSinitialized = false;
+volatile unsigned long positionTime = 0;
 volatile unsigned long lastPositionTime = 0;
 void spinMicroROS(void *parameter)
 {
     microROSInit();
 
+    positionTime = millis();
     for (;;)
     {
         checkLimitSwitch();
 
-        safetyCheck();
-
-        volatile unsigned long positionTime = millis();
+        positionTime = millis();
         trolleyPosition = encoderTrolley.getPosition();
         trolleySpeed = (trolleyPosition - lastTrolleyPosition) / (positionTime - lastPositionTime) * 1000.0f;
-
         lastTrolleyPosition = trolleyPosition;
-        lastPositionTime = positionTime;
+        lastPositionTime = millis();
 
         RCSOFTCHECK(rclc_executor_spin_some(&positionPubExecutor, RCL_MS_TO_NS(POSITION_PUBLISH_TIMEOUT_MS)));
         RCSOFTCHECK(rclc_executor_spin_some(&controllerCommandExecutor, RCL_MS_TO_NS(CONTROLLER_COMMAND_SUBSCRIBER_TIMEOUT_MS)));
@@ -41,44 +40,43 @@ void spinMicroROS(void *parameter)
     }
 }
 
-uint64_t findOrigin_time = 0;
-void findOrigin(void *parameter)
+uint64_t findOriginTimer = 0;
+void findOrigin()
 {
-    findOrigin_time = millis();
+    findOriginTimer = millis();
     trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
     while (limitSwitchEncoderSideState == false)
     {
-        if (millis() - findOrigin_time > 50)
+        if (millis() - findOriginTimer > CONTROLLER_SAMPLING_TIME_MS)
         {
-            if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
+            if (fabs(trolleySpeed) < 0.5 * TROLLEY_MAX_SPEED)
             {
-                trolleyMotorPWM += -10;
+                trolleyMotorPWM += -5;
             }
-
             else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
             {
-                trolleyMotorPWM += 2;
+                trolleyMotorPWM += 10;
             }
 
-            findOrigin_time = millis();
+            trolleyMotor.setPWM(safetyCheck(trolleyMotorPWM));
+            findOriginTimer = millis();
         }
-        ledBuiltIn.blink(100);
-        Serial.println("");
-        trolleyMotor.setPWM(trolleyMotorPWM);
+
+        // Instead of Serial.println(""), add a small delay
+        vTaskDelay(pdMS_TO_TICKS(1)); // Ensures FreeRTOS can switch tasks
     }
 
     trolleyMotorPWM = 0;
     trolleyMotor.setPWM(trolleyMotorPWM);
-
     vTaskDelay(pdMS_TO_TICKS(500));
 
     for (int i = 0; i < 2; i++)
     {
-        for (int i = -0.8 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i > -(TROLLEY_MOTOR_FIND_ORIGIN_PWM + 75); i--)
+        for (int i = -0.9 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i > -1.1 * TROLLEY_MOTOR_FIND_ORIGIN_PWM; i--)
         {
             trolleyMotorPWM = i;
             trolleyMotor.setPWM(trolleyMotorPWM);
-            vTaskDelay(pdMS_TO_TICKS(1));
+            vTaskDelay(pdMS_TO_TICKS(2));
         }
 
         trolleyMotorPWM = 0;
@@ -87,15 +85,20 @@ void findOrigin(void *parameter)
     }
 }
 
-void check_timeout()
+bool isControllerCommandTimeout()
 {
-    if (millis() - controller_command_last_call_time > CONTROLLER_COMMAND_TIMEOUT_MS)
+    if (millis() - controllerCommandLastCallTime > CONTROLLER_COMMAND_TIMEOUT_MS)
     {
         gantryMode = IDLE_MODE;
+
+        return true;
     }
+
+    return false;
 }
 
 bool stated_once = false;
+uint64_t controllerCommandTimer = 0;
 void controllerCommandTask(void *parameter)
 {
     while (microROSinitialized == false)
@@ -104,156 +107,136 @@ void controllerCommandTask(void *parameter)
         ledBuiltIn.blink(100);
     }
 
-    findOrigin(NULL);
+    findOrigin();
 
     gantryMode = IDLE_MODE;
 
+    controllerCommandTimer = millis();
     for (;;)
     {
         ledBuiltIn.blink(300);
-        Serial.println("");
+        vTaskDelay(pdMS_TO_TICKS(1));
 
-        // Brake gantry
-        if (brakeTrolleyMotor)
+        if (millis() - controllerCommandTimer > CONTROLLER_SAMPLING_TIME_MS)
         {
-            trolleyMotorPWM = 0;
-            trolleyMotor.setPWM(trolleyMotorPWM);
-            trolleyMotor.brake();
-            if (millis() - trolleyBrakeCommandTimer > 200)
+            // Brake gantry
+            if (brakeTrolleyMotor == true)
             {
-                brakeTrolleyMotor = false;
-            }
-        }
-
-        if (brakeHoistMotor)
-        {
-            hoistMotorPWM = 0;
-            hoistMotor.setPWM(hoistMotorPWM);
-            hoistMotor.brake();
-            if (millis() - hoistBrakeCommandTimer > 200)
-            {
-                brakeHoistMotor = false;
-            }
-        }
-
-        if (gantryMode == IDLE_MODE)
-        {
-            // Do nothing
-            trolleyMotorPWM = 0;
-            hoistMotorPWM = 0;
-            lastTrolleyMotorVoltage = 0;
-            lastHoistMotorVoltage = 0;
-
-            stated_once = false;
-        }
-
-        else if (gantryMode == CONTROL_MODE)
-        {
-            // Control gantry
-            check_timeout();
-        }
-
-        else if (gantryMode == MOVE_TO_ORIGIN_MODE)
-        {
-            check_timeout();
-
-            if (limitSwitchEncoderSideState == false || fabs(trolleyPosition) > 0.005)
-            {
-                if (!stated_once)
+                trolleyMotorPWM = 0;
+                trolleyMotor.setPWM(trolleyMotorPWM);
+                trolleyMotor.brake();
+                if (millis() - trolleyBrakeCommandTimer > BRAKE_COMMAND_TIMEOUT_MS)
                 {
-                    trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
-                    hoistMotorPWM = 0;
-                    stated_once = true;
+                    brakeTrolleyMotor = false;
                 }
+            }
 
-                if (millis() - findOrigin_time > 100)
+            if (brakeHoistMotor == true)
+            {
+                hoistMotorPWM = 0;
+                hoistMotor.setPWM(hoistMotorPWM);
+                hoistMotor.brake();
+                if (millis() - hoistBrakeCommandTimer > BRAKE_COMMAND_TIMEOUT_MS)
                 {
-                    findOrigin_time = millis();
+                    brakeHoistMotor = false;
+                }
+            }
 
-                    if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
+            if (gantryMode == IDLE_MODE)
+            {
+                // Do nothing
+                trolleyMotorPWM = 0;
+                hoistMotorPWM = 0;
+                lastTrolleyMotorVoltage = 0;
+                lastHoistMotorVoltage = 0;
+            }
+
+            else if (gantryMode == CONTROL_MODE && isControllerCommandTimeout() == false)
+            {
+                // Control gantry
+            }
+
+            else if (gantryMode == MOVE_TO_ORIGIN_MODE && isControllerCommandTimeout() == false)
+            {
+                if (limitSwitchEncoderSideState == false || fabs(trolleyPosition) > 0.005)
+                {
+                    if (!stated_once)
                     {
-                        trolleyMotorPWM += -10;
+                        trolleyMotorPWM = -TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+                        hoistMotorPWM = 0;
+                        stated_once = true;
+                    }
+
+                    if (fabs(trolleySpeed) < 0.5 * TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += -5;
                     }
 
                     else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
-                    {
-                        trolleyMotorPWM += 1;
-                    }
-                }
-            }
-            else
-            {
-                trolleyMotorPWM = 0;
-                gantryMode = IDLE_MODE;
-            }
-        }
-        else if (gantryMode == MOVE_TO_MIDDLE_MODE)
-        {
-            check_timeout();
-
-            trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM * get_sign(ENCODER_MAX_VALUE / 2 - encoderTrolley.getPulse());
-            hoistMotorPWM = 0;
-
-            if (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.01 * ENCODER_MAX_VALUE)
-            {
-                trolleyMotorPWM = 0;
-                gantryMode = IDLE_MODE;
-            }
-        }
-
-        else if (gantryMode == MOVE_TO_END_MODE)
-        {
-            check_timeout();
-
-            if (limitSwitchTrolleyMotorSideState == false)
-            {
-                if (!stated_once)
-                {
-                    trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
-                    hoistMotorPWM = 0;
-                    stated_once = true;
-                }
-
-                if (millis() - findOrigin_time > 100)
-                {
-                    findOrigin_time = millis();
-
-                    if (fabs(trolleySpeed) < 0.25 * TROLLEY_MAX_SPEED)
                     {
                         trolleyMotorPWM += 10;
                     }
+                }
+                
+                else
+                {
+                    trolleyMotorPWM = 0;
+                    gantryMode = IDLE_MODE;
+                    stated_once = false;
+                }
+            }
+            else if (gantryMode == MOVE_TO_MIDDLE_MODE && isControllerCommandTimeout() == false)
+            {
+                trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM * get_sign(ENCODER_MAX_VALUE / 2 - encoderTrolley.getPulse());
+                hoistMotorPWM = 0;
+
+                if (fabs(encoderTrolley.getPulse() - ENCODER_MAX_VALUE / 2) < 0.01 * ENCODER_MAX_VALUE)
+                {
+                    trolleyMotorPWM = 0;
+                    gantryMode = IDLE_MODE;
+                }
+            }
+
+            else if (gantryMode == MOVE_TO_END_MODE && isControllerCommandTimeout() == false)
+            {
+                if (limitSwitchTrolleyMotorSideState == false)
+                {
+                    if (!stated_once)
+                    {
+                        trolleyMotorPWM = TROLLEY_MOTOR_FIND_ORIGIN_PWM;
+                        hoistMotorPWM = 0;
+                        stated_once = true;
+                    }
+
+                    if (fabs(trolleySpeed) < 0.5 * TROLLEY_MAX_SPEED)
+                    {
+                        trolleyMotorPWM += 5;
+                    }
 
                     else if (fabs(trolleySpeed) > TROLLEY_MAX_SPEED)
                     {
-                        trolleyMotorPWM += -1;
+                        trolleyMotorPWM += -10;
                     }
                 }
+
+                else
+                {
+                    trolleyMotorPWM = 0;
+                    gantryMode = IDLE_MODE;
+                    stated_once = false;
+                }
             }
+
             else
             {
-                trolleyMotorPWM = 0;
                 gantryMode = IDLE_MODE;
             }
+
+            trolleyMotor.setPWM(safetyCheck(trolleyMotorPWM));
+            hoistMotor.setPWM(hoistMotorPWM);
+
+            controllerCommandTimer = millis();
         }
-
-        // else if (gantryMode == LOCK_CONTAINER_MODE)
-        // {
-        //     // Lock container
-        //     // Add code specific to LOCK_CONTAINER_MODE
-        // }
-        // else if (gantryMode == UNLOCK_CONTAINER_MODE)
-        // {
-        //     // Unlock container
-        //     // Add code specific to UNLOCK_CONTAINER_MODE
-        // }
-
-        else
-        {
-            gantryMode = IDLE_MODE;
-        }
-
-        trolleyMotor.setPWM(trolleyMotorPWM);
-        hoistMotor.setPWM(hoistMotorPWM);
 
         if (PUBLISH_VOLTAGE)
         {

@@ -57,7 +57,7 @@ void trolleyPositionPubTimerCallback(rcl_timer_t *timer, int64_t last_call_time)
   }
 }
 
-u_int32_t controller_command_last_call_time = 0;
+u_int32_t controllerCommandLastCallTime = 0;
 int8_t last_gantry_mode = IDLE_MODE;
 void controllerCommandHandler();
 void controllerCommandCallback(const void *msgin)
@@ -65,7 +65,7 @@ void controllerCommandCallback(const void *msgin)
   const std_msgs__msg__UInt32 *controllerCommandMessage = (const std_msgs__msg__UInt32 *)msgin;
   unpackValues(controllerCommandMessage->data, gantryMode, trolleyMotorPWM, hoistMotorPWM);
   controllerCommandHandler();
-  controller_command_last_call_time = millis();
+  controllerCommandLastCallTime = millis();
   last_gantry_mode = gantryMode;
 }
 

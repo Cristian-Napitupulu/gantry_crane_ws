@@ -110,23 +110,18 @@ void checkLimitSwitch()
 }
 
 uint64_t safetyCheckTimer = 0;
-void safetyCheck()
+int16_t safetyCheck(int16_t trolleyMotorPWM_)
 {
-  if (millis() - safetyCheckTimer > 25)
+  bool isGoingToSlamRightSide = (trolleySpeed > TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.7 * ENCODER_MAX_VALUE));
+  bool isGoingToSlamLeftSide = (trolleySpeed < -TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() < static_cast<int32_t>(0.3 * ENCODER_MAX_VALUE));
+
+  // Protect system at high speed by reducing PWM
+  if (isGoingToSlamRightSide || isGoingToSlamLeftSide)
   {
-    // Protect system at high speed by reducing PWM
-    if ((trolleySpeed > TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() > static_cast<int32_t>(0.875 * ENCODER_MAX_VALUE)))
-    {
-      trolleyMotorPWM = trolleyMotorPWM * 0.995;
-    }
-
-    if ((trolleySpeed < -TROLLEY_MAX_SPEED) && (encoderTrolley.getPulse() < 0.125 * ENCODER_MAX_VALUE))
-    {
-      trolleyMotorPWM = trolleyMotorPWM * 0.995;
-    }
-
-    safetyCheckTimer = millis();
+    trolleyMotorPWM_ = trolleyMotorPWM_ * 0.5;
   }
+
+  return trolleyMotorPWM_;
 }
 
 float roundToThreeDecimalPlaces(float num)

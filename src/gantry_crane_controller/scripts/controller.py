@@ -436,17 +436,17 @@ if __name__ == "__main__":
         The following code block is used to test the gantry crane's motors.
         """
 
-        # """ 1. Sweep trolley motor PWM """
-        # for i in range(NUM_REPEAT):
-        #     gantry_crane_connector.move_trolley_to_origin()
-        #     time.sleep(10.0)
-        #     gantry_crane_logger.reset_buffers()
-        #     gantry_crane_logger.reset_timer()
-        #     sweep_trolley_motor_pwm(pwm_range=[0, 451], increment=25, timeout_sec=10.0)
-        #     gantry_crane_logger.write_buffers_to_excel(
-        #         "trolley_motor_sweep_response.xlsx"
-        #     )
-        #     utility.create_plot(gantry_crane_logger)
+        """ 1. Sweep trolley motor PWM """
+        for i in range(NUM_REPEAT):
+            gantry_crane_connector.move_trolley_to_origin()
+            time.sleep(10.0)
+            gantry_crane_logger.reset_buffers()
+            gantry_crane_logger.reset_timer()
+            sweep_trolley_motor_pwm(pwm_range=[600, 800], increment=25, timeout_sec=3.0)
+            gantry_crane_logger.write_buffers_to_excel(
+                "trolley_motor_sweep_response.xlsx"
+            )
+            utility.create_plot(gantry_crane_logger)
 
         # """ 2. Sweep hoist motor PWM extend (lower container) """
         # gantry_crane_connector.move_trolley_to_middle()
@@ -524,37 +524,37 @@ if __name__ == "__main__":
         #         )
         #         utility.create_plot(gantry_crane_logger)
 
-        gantry_crane_logger.reset_buffers()
-        gantry_crane_logger.reset_timer()
+        # gantry_crane_logger.reset_buffers()
+        # gantry_crane_logger.reset_timer()
 
-        wait(5.0)
+        # wait(5.0)
 
-        """
-        The following code block is used to control the gantry crane to move to three different positions.
-        """
-        # Control gantry crane to first position
-        result = control_gantry_crane(
-            timeout_sec=PLAY_DURATION,
-            desired_trolley_position=1.0,
-            desired_cable_length=0.4,
-            max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
-            max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
-        )
-        print("Target first position. Result: {}".format(result))
+        # """
+        # The following code block is used to control the gantry crane to move to three different positions.
+        # """
+        # # Control gantry crane to first position
+        # result = control_gantry_crane(
+        #     timeout_sec=PLAY_DURATION,
+        #     desired_trolley_position=1.0,
+        #     desired_cable_length=0.4,
+        #     max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
+        #     max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
+        # )
+        # print("Target first position. Result: {}".format(result))
 
-        wait(5.0)
+        # wait(5.0)
 
-        # Control gantry crane to second position
-        result = control_gantry_crane(
-            timeout_sec=PLAY_DURATION,
-            desired_trolley_position=0.25,
-            desired_cable_length=0.5,
-            max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
-            max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
-        )
-        print("Target second position. Result: {}".format(result))
+        # # Control gantry crane to second position
+        # result = control_gantry_crane(
+        #     timeout_sec=PLAY_DURATION,
+        #     desired_trolley_position=0.25,
+        #     desired_cable_length=0.5,
+        #     max_trolley_position_steady_state_error=MAX_ERROR_TROLLEY_POSITION,
+        #     max_cable_length_steady_state_error=MAX_ERROR_CABLE_LENGTH,
+        # )
+        # print("Target second position. Result: {}".format(result))
 
-        wait(5.0)
+        # wait(5.0)
 
         # # Control gantry crane to third position
         # result = control_gantry_crane(

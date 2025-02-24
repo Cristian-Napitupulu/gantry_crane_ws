@@ -24,7 +24,7 @@ HOIST_MOTOR_PWM_TOPIC_NAME = "hoist_motor_PWM"
 
 DEFAULT_SPIN_TIMEOUT = 0.025  # Default spin timeout in seconds
 
-MAX_TROLLEY_MOTOR_PWM = 700
+MAX_TROLLEY_MOTOR_PWM = 1023
 MAX_HOIST_MOTOR_PWM = 1023
 
 MAX_TROLLEY_POSITION = 1.5  # Maximum trolley position in meters

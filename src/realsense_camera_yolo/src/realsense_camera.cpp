@@ -105,7 +105,7 @@ bool RealSenseCamera::initializeYOLOClient()
     // Wait for YOLO server
     if (YOLO_client->wait_for_service(std::chrono::seconds(15)))
     {
-        RCLCPP_INFO(get_logger(), "YOLO service server is up.");
+        RCLCPP_DEBUG(get_logger(), "YOLO service server is up.");
         return true;
     }
     else
@@ -119,17 +119,17 @@ void RealSenseCamera::initializePublishers()
 {
     cableLengthPublisher = create_publisher<std_msgs::msg::Float32>(CABLE_LENGTH_TOPIC_NAME, 10);
     swayAnglePublisher = create_publisher<std_msgs::msg::Float32>(SWAY_ANGLE_TOPIC_NAME, 10);
-    RCLCPP_INFO(get_logger(), "Cable length and sway angle publishers have been initialized.");
+    RCLCPP_DEBUG(get_logger(), "Cable length and sway angle publishers have been initialized.");
 
     if (publishDepth)
     {
         depthImagePublisher = create_publisher<sensor_msgs::msg::Image>(depthImageTopic, 10);
-        RCLCPP_INFO(get_logger(), "Depth image publisher has been initialized.");
+        RCLCPP_DEBUG(get_logger(), "Depth image publisher has been initialized.");
     }
     if (publishColor)
     {
         colorImagePublisher = create_publisher<sensor_msgs::msg::Image>(colorImageTopic, 10);
-        RCLCPP_INFO(get_logger(), "Color image publisher has been initialized.");
+        RCLCPP_DEBUG(get_logger(), "Color image publisher has been initialized.");
     }
 }
 
@@ -147,7 +147,7 @@ void RealSenseCamera::initializeRealSenseCamera()
     depthSensor.set_option(RS2_OPTION_ENABLE_MAX_USABLE_RANGE, 0);
     depthSensor.set_option(RS2_OPTION_MIN_DISTANCE, static_cast<float>(minimumDistance));
 
-    RCLCPP_INFO(get_logger(), "RealSense camera has been initialized.");
+    RCLCPP_DEBUG(get_logger(), "RealSense camera has been initialized.");
 }
 
 rs2::depth_frame RealSenseCamera::processDepthFrame(rs2::depth_frame depth_frame)
@@ -174,7 +174,7 @@ void RealSenseCamera::sendRequestToYOLO(rs2::frameset frames)
     auto result = YOLO_client->async_send_request(request);
 
     // Print something for debugging
-    RCLCPP_INFO_ONCE(this->get_logger(), "YOLO request has been sent.");
+    RCLCPP_DEBUG_ONCE(this->get_logger(), "YOLO request has been sent.");
 
     if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
     {
@@ -295,7 +295,7 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
                              (float)(containerBoundingBoxPixel[1] + containerBoundingBoxPixel[3]) / 2};
     if (center_pixel[0] < 0 || center_pixel[0] > depthWidth || center_pixel[1] < 0 || center_pixel[1] > depthHeight)
     {
-        RCLCPP_INFO(this->get_logger(), "Center pixel is out of range.");
+        RCLCPP_DEBUG(this->get_logger(), "Center pixel is out of range.");
         return;
     }
 
@@ -320,7 +320,7 @@ void RealSenseCamera::projectContainerPixelToPoint(rs2::depth_frame depth_frame)
     containerCenterPoint[2] = depthPoint[2];
 
     // Print container center point for debugging
-    RCLCPP_INFO(get_logger(), "Container center point (x, y, z) (meters): (%.5f, %.5f, %.5f)",
+    RCLCPP_DEBUG(get_logger(), "Container center point (x, y, z) (meters): (%.5f, %.5f, %.5f)",
                 containerCenterPoint[0], containerCenterPoint[1], containerCenterPoint[2]);
 }
 
@@ -363,7 +363,7 @@ void RealSenseCamera::publishCableLengthAndSwayAngle()
 
     int execution_time = executionTime.getMovingAverage();
     // Print cable length and sway angle for debugging
-    RCLCPP_INFO(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle_, execution_time);
+    RCLCPP_DEBUG(this->get_logger(), "Publishing cable length: %.5f meters, and sway angle: %.5f degrees. Execution time: %d ms.", cable_length, sway_angle_, execution_time);
 }
 
 void RealSenseCamera::publishImage(rs2::frameset frames)
@@ -411,12 +411,12 @@ void RealSenseCamera::publishImage(rs2::frameset frames)
 void RealSenseCamera::printParameters()
 {
     // Print parameters
-    RCLCPP_INFO(this->get_logger(), "depth_image_topic: %s", depthImageTopic.c_str());
-    RCLCPP_INFO(this->get_logger(), "color_image_topic: %s", colorImageTopic.c_str());
-    RCLCPP_INFO(this->get_logger(), "minimum_distance: %.3f meters", minimumDistance);
-    RCLCPP_INFO(this->get_logger(), "maximum_distance: %.3f meters", maximumDistance);
-    RCLCPP_INFO(this->get_logger(), "publish_depth: %s", publishDepth ? "true" : "false");
-    RCLCPP_INFO(this->get_logger(), "publish_color: %s", publishColor ? "true" : "false");
+    RCLCPP_DEBUG(this->get_logger(), "depth_image_topic: %s", depthImageTopic.c_str());
+    RCLCPP_DEBUG(this->get_logger(), "color_image_topic: %s", colorImageTopic.c_str());
+    RCLCPP_DEBUG(this->get_logger(), "minimum_distance: %.3f meters", minimumDistance);
+    RCLCPP_DEBUG(this->get_logger(), "maximum_distance: %.3f meters", maximumDistance);
+    RCLCPP_DEBUG(this->get_logger(), "publish_depth: %s", publishDepth ? "true" : "false");
+    RCLCPP_DEBUG(this->get_logger(), "publish_color: %s", publishColor ? "true" : "false");
 }
 
 int main(int argc, char **argv)

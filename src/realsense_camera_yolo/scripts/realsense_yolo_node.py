@@ -56,7 +56,7 @@ class RealSenseYOLOServer(Node):
         # Initialize YOLO model
         self.model = YOLO(model_path)
 
-        self.get_logger().info(f"YOLO model loaded from {model_path}")
+        self.get_logger().debug(f"YOLO model loaded from {model_path}")
 
         # Initialize YOLO action server
         self.yolo_server = self.create_service(
@@ -67,7 +67,7 @@ class RealSenseYOLOServer(Node):
         self.bridge = CvBridge()
 
         # Print something for debugging
-        self.get_logger().info("Service server ready. Waiting for requests...")
+        self.get_logger().debug("Service server ready. Waiting for requests...")
 
     def execute_yolo_callback(self, request, result):
         self.start = time.time()
@@ -137,7 +137,7 @@ class RealSenseYOLOServer(Node):
                 )
                 cv2.circle(imgres, center, 3, (0, 165, 255), thickness=cv2.FILLED)
 
-            cv2.namedWindow("Hasil Deteksi Kontainer dengan LiDAR & YOLOv8" , 16)
+            cv2.namedWindow("Hasil Deteksi Kontainer dengan LiDAR & YOLOv8", 16)
             cv2.imshow("Hasil Deteksi Kontainer dengan LiDAR & YOLOv8", imgres)
 
             cv2.waitKey(1)
@@ -157,7 +157,7 @@ class RealSenseYOLOServer(Node):
                     int(bounding_box[3]),
                 )
                 # Print result for debugging
-                self.get_logger().info(
+                self.get_logger().debug(
                     f"Using Bound box (pixel): ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
                 )
 
@@ -172,7 +172,7 @@ class RealSenseYOLOServer(Node):
                     int(corners[1][1]),
                 )
                 # Print result for debugging
-                self.get_logger().info(
+                self.get_logger().debug(
                     f"Using Corner (pixel): ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
                 )
 
@@ -185,7 +185,7 @@ class RealSenseYOLOServer(Node):
                     int(bounding_box[3]),
                 )
                 # Print result for debugging
-                self.get_logger().info(
+                self.get_logger().debug(
                     f"Bounding box (pixel): ({result.x1}, {result.y1}, {result.x2}, {result.y2}). Execution time: {execution_time:.2f}ms"
                 )
 
@@ -203,7 +203,7 @@ class RealSenseYOLOServer(Node):
             execution_time = moving_average_execution_time.get()
 
             # Print result for debugging
-            self.get_logger().info(
+            self.get_logger().debug(
                 f"No bounding box found. Execution time: {execution_time:.2f}ms"
             )
 

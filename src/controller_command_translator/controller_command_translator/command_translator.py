@@ -37,8 +37,10 @@ class CommandTranslator(Node):
 
         self.publish_timer = self.create_timer(PUBLISH_PERIOD, self.timer_callback)
 
+        self.get_logger().info("Command Translator Node has been started.")
+
     def timer_callback(self):
-        self.get_logger().info(
+        self.get_logger().debug(
             "Publishing: pwm_trolley: %d, pwm_hoist: %d"
             % (self.pwm_trolley, self.pwm_hoist)
         )
